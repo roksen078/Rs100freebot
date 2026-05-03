@@ -2,11 +2,26 @@ import telebot
 from telebot import types
 import json
 import os
+from flask import Flask
+from threading import Thread
 
-# --- SETTINGS ---
+# --- RENDER PORT ERROR FIX ---
+app = Flask('')
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run():
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+# --- BOT SETTINGS ---
 API_TOKEN = '8313028390:AAG7ehvUNwn8JYuGvCFfJTLFkHUGbTKTF6g'
-ADMIN_ID = 1908832842 
-START_IMAGE_URL = "https://t.me/TECH_FUNDS_2/113" 
+ADMIN_ID = 6363381640 
+START_IMAGE_URL = "https://i.ibb.co/LkvmXGj/money-chest.jpg" 
 
 bot = telebot.TeleBot(API_TOKEN)
 DB_FILE = "users.json"
@@ -17,7 +32,6 @@ def get_users():
             return json.load(f)
     return []
 
-# --- START COMMAND ---
 @bot.message_handler(commands=['start'])
 def start(message):
     users = get_users()
@@ -26,7 +40,6 @@ def start(message):
         with open(DB_FILE, "w") as f:
             json.dump(users, f)
     
-    # HTML use karke bold kiya hai <b> tag se
     welcome_text = (
         "<b>🎉 Join Official Big Promo Code Channel</b>\n\n"
         "<b>📅 Daily FREE BIG CODE</b>\n\n"
@@ -46,28 +59,9 @@ def start(message):
     except:
         bot.send_message(message.chat.id, welcome_text, reply_markup=markup, parse_mode='HTML')
 
-# --- UNIVERSAL BROADCAST ---
-@bot.message_handler(func=lambda message: True, content_types=['text', 'photo', 'video', 'document', 'audio'])
-def handle_broadcast(message):
-    if message.chat.id == ADMIN_ID:
-        users = get_users()
-        count = 0
-        bot.send_message(ADMIN_ID, "<b>🚀 Broadcasting started...</b>", parse_mode='HTML')
-        for user in users:
-            try:
-                bot.copy_message(chat_id=user, from_chat_id=ADMIN_ID, message_id=message.message_id)
-                count += 1
-            except:
-                pass
-        bot.send_message(ADMIN_ID, f"<b>✅ Done! {count} users ko bhej diya gaya.</b>", parse_mode='HTML')
-
-# --- CLAIM BUTTON HANDLER ---
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     if call.data == "claim_code":
-        bot.answer_callback_query(call.id, text="Checking subscription...", show_alert=False)
-        
-        # HTML Stylish Error Message (Poora Bold)
         stylish_error = (
             "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n"
             "<b>Kripaya upar diye gaye dono channels join karein.</b>\n\n"
@@ -75,5 +69,8 @@ def callback_query(call):
         )
         bot.send_message(call.message.chat.id, stylish_error, parse_mode='HTML')
 
-print("Bot is Running with HTML Bold Mode!")
-bot.infinity_polling()
+if __name__ == "__main__":
+    keep_alive()
+    print("Bot is Running!")
+    bot.infinity_polling()
+    
