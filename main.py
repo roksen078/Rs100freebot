@@ -20,7 +20,7 @@ def keep_alive():
 
 # --- BOT SETTINGS ---
 API_TOKEN = '8313028390:AAG7ehvUNwn8JYuGvCFfJTLFkHUGbTKTF6g'
-ADMIN_ID = 6363381640 
+ADMIN_ID = 1908832842 
 START_IMAGE_URL = "https://t.me/TECH_FUNDS_2/113" 
 
 bot = telebot.TeleBot(API_TOKEN)
