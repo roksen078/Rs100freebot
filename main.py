@@ -5,7 +5,7 @@ import os
 from flask import Flask
 from threading import Thread
 
-# --- RENDER PORT ERROR FIX ---
+# --- RENDER PORT FIX ---
 app = Flask('')
 @app.route('/')
 def home():
@@ -20,7 +20,7 @@ def keep_alive():
 
 # --- BOT SETTINGS ---
 API_TOKEN = '8313028390:AAG7ehvUNwn8JYuGvCFfJTLFkHUGbTKTF6g'
-ADMIN_ID = 1908832842 
+ADMIN_ID = 1908832842  # Aapki sahi ID yahan daal di hai
 START_IMAGE_URL = "https://t.me/TECH_FUNDS_2/113" 
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -28,12 +28,44 @@ DB_FILE = "users.json"
 
 def get_users():
     if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r") as f:
-            return json.load(f)
+        try:
+            with open(DB_FILE, "r") as f:
+                return json.load(f)
+        except: return []
     return []
 
-@bot.message_handler(commands=['start'])
-def start(message):
+# --- MESSAGE HANDLER (ADMIN & USERS) ---
+@bot.message_handler(content_types=['text', 'photo'])
+def handle_messages(message):
+    users = get_users()
+    
+    # --- ADMIN LOGIC ---
+    if message.from_user.id == ADMIN_ID:
+        # Agar Admin /start bhejta hai toh buttons dikhao
+        if message.text == "/start":
+            send_welcome(message)
+            return
+
+        # Agar Admin kuch aur bhejta hai toh use Broadcast karo
+        bot.send_message(ADMIN_ID, f"🚀 {len(users)} users ko broadcast shuru ho raha hai...")
+        count = 0
+        for user_id in users:
+            try:
+                if message.content_type == 'text':
+                    bot.send_message(user_id, message.text)
+                elif message.content_type == 'photo':
+                    bot.send_photo(user_id, message.photo[-1].file_id, caption=message.caption)
+                count += 1
+            except:
+                pass
+        bot.send_message(ADMIN_ID, f"✅ Done! {count} users ko bhej diya gaya.")
+    
+    # --- NORMAL USER LOGIC ---
+    else:
+        if message.text == "/start":
+            send_welcome(message)
+
+def send_welcome(message):
     users = get_users()
     if message.chat.id not in users:
         users.append(message.chat.id)
@@ -64,13 +96,11 @@ def callback_query(call):
     if call.data == "claim_code":
         stylish_error = (
             "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n"
-            "<b>Kripaya upar diye gaye dono channels join karein.</b>\n\n"
-            "<b>📌 Zaruri: Dono channel ko pin 📌 karke rakho, tabhi code milega!</b>"
+            "<b>Kripaya upar diye gaye dono channels join karein.</b>"
         )
         bot.send_message(call.message.chat.id, stylish_error, parse_mode='HTML')
 
 if __name__ == "__main__":
     keep_alive()
-    print("Bot is Running!")
     bot.infinity_polling()
     
