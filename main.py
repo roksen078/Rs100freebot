@@ -96,12 +96,13 @@ def callback_query(call):
     if call.data == "claim_code":
         stylish_error = (
             "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n"
-            "<b>Kripaya upar diye gaye dono channels join karein.</b>"
+            "<b>Kripaya upar diye gaye dono channels join karein.</b>\n\n"
+            "📌 <b>Zaruri:</b> Dono channels ko Pin karke rakho, tabhi code milega!"
         )
+        bot.answer_callback_query(call.id, "Checking subscription status...")
         bot.send_message(call.message.chat.id, stylish_error, parse_mode='HTML')
 
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
- 
-
+    
