@@ -21,7 +21,7 @@ def keep_alive():
 # --- BOT SETTINGS ---
 API_TOKEN = '8313028390:AAG7ehvUNwn8JYuGvCFfJTLFkHUGbTKTF6g'
 ADMIN_ID = 1908832842  # Aapki sahi ID yahan daal di hai
-START_IMAGE_URL = "https://t.me/TECH_FUNDS_2/113" 
+START_IMAGE_URL = "https://t.me/rockyy_078/2052" 
 
 bot = telebot.TeleBot(API_TOKEN)
 DB_FILE = "users.json"
