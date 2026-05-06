@@ -20,7 +20,7 @@ def keep_alive():
 
 # --- BOT SETTINGS ---
 API_TOKEN = '8313028390:AAG7ehvUNwn8JYuGvCFfJTLFkHUGbTKTF6g'
-ADMIN_ID = 1908832842  # Aapki sahi ID yahan daal di hai
+ADMIN_ID = 1908832842 
 START_IMAGE_URL = "https://t.me/daily_free_code1/3" 
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -34,27 +34,23 @@ def get_users():
         except: return []
     return []
 
-# --- MESSAGE HANDLER (ADMIN & USERS) ---
-@bot.message_handler(content_types=['text', 'photo'])
+# --- MESSAGE HANDLER ---
+@bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_messages(message):
     users = get_users()
     
-    # --- ADMIN LOGIC ---
+    # --- ADMIN LOGIC (BROADCAST EVERYTHING) ---
     if message.from_user.id == ADMIN_ID:
-        # Agar Admin /start bhejta hai toh buttons dikhao
         if message.text == "/start":
             send_welcome(message)
             return
 
-        # Agar Admin kuch aur bhejta hai toh use Broadcast karo
+        # Yahan se bot sab kuch copy karke bhejega (Text, Video, Photo, GIF)
         bot.send_message(ADMIN_ID, f"🚀 {len(users)} users ko broadcast shuru ho raha hai...")
         count = 0
         for user_id in users:
             try:
-                if message.content_type == 'text':
-                    bot.send_message(user_id, message.text)
-                elif message.content_type == 'photo':
-                    bot.send_photo(user_id, message.photo[-1].file_id, caption=message.caption)
+                bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
                 count += 1
             except:
                 pass
@@ -62,7 +58,7 @@ def handle_messages(message):
     
     # --- NORMAL USER LOGIC ---
     else:
-        if message.text == "/start":
+        if message.content_type == 'text' and message.text == "/start":
             send_welcome(message)
 
 def send_welcome(message):
