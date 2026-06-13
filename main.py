@@ -19,7 +19,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = '8313028390:AAG7ehvUNwn8JYuGvCFfJTLFkHUGbTKTF6g'
+API_TOKEN = '8313028390:AAGYgmkTmCQ3DFLjAUYItZyhbBGgjgk7mMM'
 ADMIN_ID = 1908832842 
 START_IMAGE_URL = "https://t.me/daily_free_code1/3" 
 
@@ -75,13 +75,15 @@ def send_welcome(message):
     )
     
     markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton("Join Channel 👇", url="https://t.me/+uLvuR0wfZ6c5Yzdl")
-    btn2 = types.InlineKeyboardButton("Join Channel 👇", url="https://t.me/+tmxMobgZYe82ZmNl")
+    btn1 = types.InlineKeyboardButton("500Gift Code", url="https://t.me/+tmxMobgZYe82ZmNl")
+btn2 = types.InlineKeyboardButton("FREE Cashback", url="https://t.me/+uLvuR0wfZ6c5Yzdl")
+btn3 = types.InlineKeyboardButton("Daily₹500", url="https://t.me/TECHNO_FUNDS")
+btn4 = types.InlineKeyboardButton("Real Cashback", url="https://t.me/+wZ3v70GNS2lhMmM1")
     claim_btn = types.InlineKeyboardButton("🎁 Claim Code", callback_data="claim_code")
-    
-    markup.row(btn1, btn2)
-    markup.row(claim_btn)
-    
+   
+markup.row(btn1, btn2)
+markup.row(btn3, btn4)
+markup.row(claim_btn)
     try:
         bot.send_photo(message.chat.id, START_IMAGE_URL, caption=welcome_text, reply_markup=markup, parse_mode='HTML')
     except:
