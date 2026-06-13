@@ -7,6 +7,7 @@ from threading import Thread
 
 # --- RENDER PORT FIX ---
 app = Flask('')
+
 @app.route('/')
 def home():
     return "Bot is alive!"
@@ -19,9 +20,9 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = '8313028390:AAGYgmkTmCQ3DFLjAUYItZyhbBGgjgk7mMM'
-ADMIN_ID = 1908832842 
-START_IMAGE_URL = "https://t.me/daily_free_code1/3" 
+API_TOKEN = "8313028390:AAGYgmkTmCQ3DFLjAUYItZyhbBGgjgk7mMM"
+ADMIN_ID = 1908832842
+START_IMAGE_URL = "https://t.me/daily_free_code1/3"
 
 bot = telebot.TeleBot(API_TOKEN)
 DB_FILE = "users.json"
@@ -31,31 +32,43 @@ def get_users():
         try:
             with open(DB_FILE, "r") as f:
                 return json.load(f)
-        except: return []
+        except:
+            return []
     return []
 
 # --- MESSAGE HANDLER ---
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_messages(message):
     users = get_users()
-    
+
     # --- ADMIN LOGIC (BROADCAST EVERYTHING) ---
     if message.from_user.id == ADMIN_ID:
         if message.text == "/start":
             send_welcome(message)
             return
 
-        # Yahan se bot sab kuch copy karke bhejega (Text, Video, Photo, GIF)
-        bot.send_message(ADMIN_ID, f"🚀 {len(users)} users ko broadcast shuru ho raha hai...")
+        bot.send_message(
+            ADMIN_ID,
+            f"🚀 {len(users)} users ko broadcast shuru ho raha hai..."
+        )
+
         count = 0
         for user_id in users:
             try:
-                bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
+                bot.copy_message(
+                    chat_id=user_id,
+                    from_chat_id=message.chat.id,
+                    message_id=message.message_id
+                )
                 count += 1
             except:
                 pass
-        bot.send_message(ADMIN_ID, f"✅ Done! {count} users ko bhej diya gaya.")
-    
+
+        bot.send_message(
+            ADMIN_ID,
+            f"✅ Done! {count} users ko bhej diya gaya."
+        )
+
     # --- NORMAL USER LOGIC ---
     else:
         if message.content_type == 'text' and message.text == "/start":
@@ -63,31 +76,64 @@ def handle_messages(message):
 
 def send_welcome(message):
     users = get_users()
+
     if message.chat.id not in users:
         users.append(message.chat.id)
         with open(DB_FILE, "w") as f:
             json.dump(users, f)
-    
+
     welcome_text = (
         "<b>🎉 Join Official Big Promo Code Channel</b>\n\n"
         "<b>📅 Daily FREE BIG CODE</b>\n\n"
         "<b>👇 Join our channels below and claim your code!</b>"
     )
-    
+
     markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton("500Gift Code", url="https://t.me/+tmxMobgZYe82ZmNl")
-btn2 = types.InlineKeyboardButton("FREE Cashback", url="https://t.me/+uLvuR0wfZ6c5Yzdl")
-btn3 = types.InlineKeyboardButton("Daily₹500", url="https://t.me/TECHNO_FUNDS")
-btn4 = types.InlineKeyboardButton("Real Cashback", url="https://t.me/+wZ3v70GNS2lhMmM1")
-    claim_btn = types.InlineKeyboardButton("🎁 Claim Code", callback_data="claim_code")
-   
-markup.row(btn1, btn2)
-markup.row(btn3, btn4)
-markup.row(claim_btn)
+
+    btn1 = types.InlineKeyboardButton(
+        "500Gift Code",
+        url="https://t.me/+tmxMobgZYe82ZmNl"
+    )
+
+    btn2 = types.InlineKeyboardButton(
+        "FREE Cashback",
+        url="https://t.me/+uLvuR0wfZ6c5Yzdl"
+    )
+
+    btn3 = types.InlineKeyboardButton(
+        "Daily₹500",
+        url="https://t.me/TECHNO_FUNDS"
+    )
+
+    btn4 = types.InlineKeyboardButton(
+        "Real Cashback",
+        url="https://t.me/+wZ3v70GNS2lhMmM1"
+    )
+
+    claim_btn = types.InlineKeyboardButton(
+        "🎁 Claim Code",
+        callback_data="claim_code"
+    )
+
+    markup.row(btn1, btn2)
+    markup.row(btn3, btn4)
+    markup.row(claim_btn)
+
     try:
-        bot.send_photo(message.chat.id, START_IMAGE_URL, caption=welcome_text, reply_markup=markup, parse_mode='HTML')
+        bot.send_photo(
+            message.chat.id,
+            START_IMAGE_URL,
+            caption=welcome_text,
+            reply_markup=markup,
+            parse_mode='HTML'
+        )
     except:
-        bot.send_message(message.chat.id, welcome_text, reply_markup=markup, parse_mode='HTML')
+        bot.send_message(
+            message.chat.id,
+            welcome_text,
+            reply_markup=markup,
+            parse_mode='HTML'
+        )
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
@@ -97,10 +143,18 @@ def callback_query(call):
             "<b>Kripaya upar diye gaye dono channels join karein.</b>\n\n"
             "📌 <b>Zaruri:</b> Dono channels ko Pin karke rakho, tabhi code milega!"
         )
-        bot.answer_callback_query(call.id, "Checking subscription status...")
-        bot.send_message(call.message.chat.id, stylish_error, parse_mode='HTML')
+
+        bot.answer_callback_query(
+            call.id,
+            "Checking subscription status..."
+        )
+
+        bot.send_message(
+            call.message.chat.id,
+            stylish_error,
+            parse_mode='HTML'
+        )
 
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
-    
