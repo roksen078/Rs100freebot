@@ -27,6 +27,29 @@ START_IMAGE_URL = "https://t.me/daily_free_code1/3"
 bot = telebot.TeleBot(API_TOKEN)
 DB_FILE = "users.json"
 
+SETTINGS_FILE = "settings.json"
+
+def load_settings():
+    default = {
+        "maintenance": False,
+        "force_join": False,
+        "start_message": None,
+        "start_image": None
+    }
+
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r") as f:
+                return json.load(f)
+        except:
+            pass
+
+    return default
+
+def save_settings(data):
+    with open(SETTINGS_FILE, "w") as f:
+        json.dump(data, f)
+
 def get_users():
     if os.path.exists(DB_FILE):
         try:
@@ -39,7 +62,19 @@ def get_users():
 # --- MESSAGE HANDLER ---
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_messages(message):
-    users = get_users()
+    users = get_users() 
+    
+ settings = load_settings()
+
+if (
+    settings["maintenance"]
+    and message.from_user.id != ADMIN_ID
+):
+    bot.send_message(
+        message.chat.id,
+        "🛠 Bot Maintenance Mode Me Hai"
+    )
+    return
 
     # --- ADMIN LOGIC (BROADCAST EVERYTHING) ---
     if message.from_user.id == ADMIN_ID:
@@ -75,7 +110,32 @@ def handle_messages(message):
             send_welcome(message)
 
 def send_welcome(message):
-    users = get_users()
+
+    @bot.message_handler(commands=['admin'])
+def admin_panel(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    bot.send_message(
+        message.chat.id,
+        """
+⚙ ADMIN PANEL
+
+/stats
+/export
+
+/maintenance_on
+/maintenance_off
+
+/forcejoin_on
+/forcejoin_off
+
+Broadcast:
+Text, Photo, Video send karo
+Automatically sab users ko chala jayega.
+"""
+    )
+users = get_users()
 
     if message.chat.id not in users:
         users.append(message.chat.id)
