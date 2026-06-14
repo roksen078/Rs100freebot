@@ -172,7 +172,7 @@ users = get_users()
     )
 
     claim_btn = types.InlineKeyboardButton(
-        "🎉 Get My Free Code ",
+        "🎉 Get My Free Code",
         callback_data="claim_code"
     )
 
