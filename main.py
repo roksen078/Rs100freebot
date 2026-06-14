@@ -20,7 +20,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = ""  # Yahan apna token dalein
+API_TOKEN = "8313028390:AAHYtwlM9mv-W9BeeJZ2q5CgjAQnhsIZVmM"  # Yahan apna token dalein
 ADMIN_ID = 1908832842
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -47,7 +47,6 @@ def load_settings():
         try:
             with open(SETTINGS_FILE, "r") as f:
                 current_data = json.load(f)
-                # Ensure all new keys exist
                 for key, val in default.items():
                     if key not in current_data:
                         current_data[key] = val
@@ -78,7 +77,25 @@ def save_user(user_id):
         with open(DB_FILE, "w") as f:
             json.dump(users, f)
 
-# --- ADMIN COMMANDS HANDLERS ---
+# --- 1. ADMIN PANEL & COMMANDS (INHE SABSE UPAR RAKHNA ZARURI HAI) ---
+@bot.message_handler(commands=['admin'])
+def admin_panel(message):
+    if message.from_user.id != ADMIN_ID: return
+    panel_text = (
+        "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
+        "📊 <code>/stats</code> - Total Users dekhne ke liye\n"
+        "💾 <code>/export</code> - Database ka text backup file lene ke liye\n\n"
+        "🔴 <code>/maintenance_on</code> - Maintenance ON karne ke liye\n"
+        "🟢 <code>/maintenance_off</code> - Maintenance OFF karne ke liye\n\n"
+        "🔗 <code>/setlink [1-4] [link]</code> - Channel link badalna\n"
+        "📝 <code>/settext [text]</code> - Welcome text badalna\n"
+        "🖼 <code>/setphoto [image_url]</code> - Main photo badalna\n"
+        "🎁 <code>/setcode [code]</code> - Promo Code badalna\n\n"
+        "📢 <b>Broadcast:</b>\n"
+        "Pehle ki tarah koi bhi message/photo/video direct send ya forward karo, sabko chala jayega."
+    )
+    bot.send_message(message.chat.id, panel_text, parse_mode='HTML')
+
 @bot.message_handler(commands=['stats'])
 def show_stats(message):
     if message.from_user.id != ADMIN_ID: return
@@ -92,7 +109,6 @@ def export_database(message):
     with open("backup_users.txt", "w") as f:
         for u_id in users:
             f.write(f"{u_id}\n")
-    
     with open("backup_users.txt", "rb") as doc:
         bot.send_document(message.chat.id, doc, caption="💾 Aapka Users Database Backup File.")
     os.remove("backup_users.txt")
@@ -120,7 +136,6 @@ def change_link(message):
         parts = message.text.split(maxsplit=2)
         ch_num = parts[1]
         new_url = parts[2]
-        
         if ch_num in ['1', '2', '3', '4']:
             settings = load_settings()
             settings[f"ch{ch_num}"] = new_url
@@ -167,27 +182,11 @@ def change_code(message):
     except:
         bot.reply_to(message, "❌ Format galat hai. Example: `/setcode NEWCODE100`")
 
-# --- ADMIN PANEL MAIN MENU COMMAND ---
-@bot.message_handler(commands=['admin'])
-def admin_panel(message):
-    if message.from_user.id != ADMIN_ID: return
+@bot.message_handler(commands=['start'])
+def handle_start(message):
+    send_welcome(message)
 
-    panel_text = (
-        "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
-        "📊 <code>/stats</code> - Total Users dekhne ke liye\n"
-        "💾 <code>/export</code> - Database ka text backup file lene ke liye\n\n"
-        "🔴 <code>/maintenance_on</code> - Maintenance ON karne ke liye\n"
-        "🟢 <code>/maintenance_off</code> - Maintenance OFF karne ke liye\n\n"
-        "🔗 <code>/setlink [1-4] [link]</code> - Channel link badalna\n"
-        "📝 <code>/settext [text]</code> - Welcome text badalna\n"
-        "🖼 <code>/setphoto [image_url]</code> - Main photo badalna\n"
-        "🎁 <code>/setcode [code]</code> - Promo Code badalna\n\n"
-        "📢 <b>Broadcast:</b>\n"
-        "Pehle ki tarah koi bhi message/photo/video direct send ya forward karo, sabko chala jayega."
-    )
-    bot.send_message(message.chat.id, panel_text, parse_mode='HTML')
-
-# --- MAIN MESSAGE HANDLER & BROADCAST ---
+# --- 2. MAIN BROADCAST HANDLER (ISKO SABSE NICHE RAKHNA HAI) ---
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_messages(message):
     users = get_users() 
@@ -198,18 +197,13 @@ def handle_messages(message):
         bot.send_message(message.chat.id, "🛠 Bot Maintenance Mode Me Hai. Kripaya thodi der baad koshish karein.")
         return
 
-    # --- ADMIN LOGIC (BROADCAST EVERYTHING SAME AS BEFORE) ---
+    # Admin Broadcast logic (Bina kisi command ke forward kiya hua post)
     if message.from_user.id == ADMIN_ID:
-        if message.text == "/start":
-            send_welcome(message)
-            return
-        
-        # Agar admin ki koi bhi command chal rahi ho toh broadcast mat karo
+        # Agar admin galti se koi text bhej raha hai jo '/' se shuru hota hai (jaise galat command), toh use broadcast mat karo
         if message.text and message.text.startswith('/'):
             return
 
         bot.send_message(ADMIN_ID, f"🚀 {len(users)} users ko broadcast shuru ho raha hai...")
-
         count = 0
         for user_id in users:
             try:
@@ -221,13 +215,7 @@ def handle_messages(message):
                 count += 1
             except:
                 pass
-
         bot.send_message(ADMIN_ID, f"✅ Done! {count} users ko bhej diya gaya.")
-
-    # --- NORMAL USER LOGIC ---
-    else:
-        if message.content_type == 'text' and message.text == "/start":
-            send_welcome(message)
 
 # --- WELCOME FUNCTION ---
 def send_welcome(message):
@@ -235,7 +223,6 @@ def send_welcome(message):
     settings = load_settings()
 
     markup = types.InlineKeyboardMarkup()
-
     btn1 = types.InlineKeyboardButton("🚀 Claim ₹500", url=settings.get("ch1"))
     btn2 = types.InlineKeyboardButton("🎁 Unlock Code", url=settings.get("ch2"))
     btn3 = types.InlineKeyboardButton("🎯 Claim bonus", url=settings.get("ch3"))
@@ -267,8 +254,6 @@ def send_welcome(message):
 def callback_query(call):
     if call.data == "claim_code":
         bot.answer_callback_query(call.id, "Checking...")
-        
-        # Aapka bataya hua custom error message bina kisi change ke
         stylish_error = (
             "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n"
             "<b>Kripaya upar diye gaye dono channels join karein.</b>\n\n"
@@ -279,3 +264,4 @@ def callback_query(call):
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
+    
