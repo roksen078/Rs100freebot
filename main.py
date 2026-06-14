@@ -148,22 +148,22 @@ def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
 
     btn1 = types.InlineKeyboardButton(
-        "🚀 Claim ₹500 Now",
+        "🚀 Claim ₹500",
         url="https://t.me/+tmxMobgZYe82ZmNl"
     )
 
     btn2 = types.InlineKeyboardButton(
-        "🎁 Unlock Bonus Code",
+        "🎁 Unlock Code",
         url="https://t.me/+uLvuR0wfZ6c5Yzdl"
     )
 
     btn3 = types.InlineKeyboardButton(
-        "🎯 Claim Today's Gift",
+        "🎯 Claim bonus",
         url="https://t.me/TECHNO_FUNDS"
     )
 
     btn4 = types.InlineKeyboardButton(
-        "🔓 unlock gift code",
+        "💎 VIP GIFT",
         url="https://t.me/+MDQ7NXT1pN42NWU1"
     )
 
