@@ -20,7 +20,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAHYtwlM9mv-W9BeeJZ2q5CgjAQnhsIZVmM"  # Yahan apna token dalein
+API_TOKEN = ""  # Yahan apna token dalein
 ADMIN_ID = 1908832842
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -167,6 +167,26 @@ def change_code(message):
     except:
         bot.reply_to(message, "❌ Format galat hai. Example: `/setcode NEWCODE100`")
 
+# --- ADMIN PANEL MAIN MENU COMMAND ---
+@bot.message_handler(commands=['admin'])
+def admin_panel(message):
+    if message.from_user.id != ADMIN_ID: return
+
+    panel_text = (
+        "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
+        "📊 <code>/stats</code> - Total Users dekhne ke liye\n"
+        "💾 <code>/export</code> - Database ka text backup file lene ke liye\n\n"
+        "🔴 <code>/maintenance_on</code> - Maintenance ON karne ke liye\n"
+        "🟢 <code>/maintenance_off</code> - Maintenance OFF karne ke liye\n\n"
+        "🔗 <code>/setlink [1-4] [link]</code> - Channel link badalna\n"
+        "📝 <code>/settext [text]</code> - Welcome text badalna\n"
+        "🖼 <code>/setphoto [image_url]</code> - Main photo badalna\n"
+        "🎁 <code>/setcode [code]</code> - Promo Code badalna\n\n"
+        "📢 <b>Broadcast:</b>\n"
+        "Pehle ki tarah koi bhi message/photo/video direct send ya forward karo, sabko chala jayega."
+    )
+    bot.send_message(message.chat.id, panel_text, parse_mode='HTML')
+
 # --- MAIN MESSAGE HANDLER & BROADCAST ---
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_messages(message):
@@ -184,7 +204,7 @@ def handle_messages(message):
             send_welcome(message)
             return
         
-        # Agar admin command likh raha hai toh broadcast nahi karega
+        # Agar admin ki koi bhi command chal rahi ho toh broadcast mat karo
         if message.text and message.text.startswith('/'):
             return
 
@@ -208,26 +228,6 @@ def handle_messages(message):
     else:
         if message.content_type == 'text' and message.text == "/start":
             send_welcome(message)
-
-# --- ADMIN PANEL MAIN MENU COMMAND ---
-@bot.message_handler(commands=['admin'])
-def admin_panel(message):
-    if message.from_user.id != ADMIN_ID: return
-
-    panel_text = (
-        "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
-        "📊 <code>/stats</code> - Total Users dekhne ke liye\n"
-        "💾 <code>/export</code> - Database ka text backup file lene ke liye\n\n"
-        "🔴 <code>/maintenance_on</code> - Maintenance ON karne ke liye\n"
-        "🟢 <code>/maintenance_off</code> - Maintenance OFF karne ke liye\n\n"
-        "🔗 <code>/setlink [1-4] [link]</code> - Channel link badalna\n"
-        "📝 <code>/settext [text]</code> - Welcome text badalna\n"
-        "🖼 <code>/setphoto [image_url]</code> - Main photo badalna\n"
-        "🎁 <code>/setcode [code]</code> - Promo Code badalna\n\n"
-        "📢 <b>Broadcast:</b>\n"
-        "Pehle ki tarah koi bhi message/photo/video direct send ya forward karo, sabko chala jayega."
-    )
-    bot.send_message(message.chat.id, panel_text, parse_mode='HTML')
 
 # --- WELCOME FUNCTION ---
 def send_welcome(message):
@@ -265,16 +265,16 @@ def send_welcome(message):
 # --- CALLBACK HANDLER ---
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
-    settings = load_settings()
     if call.data == "claim_code":
-        bot.answer_callback_query(call.id, "Success!")
+        bot.answer_callback_query(call.id, "Checking...")
         
-        # Ab claim button dabaane par aapka set kiya hua real code dikhega
-        success_message = (
-            f"<b>🎉 Aapka Code: {settings.get('code')}</b>\n\n"
-            "Enjoy aapka free reward!"
+        # Aapka bataya hua custom error message bina kisi change ke
+        stylish_error = (
+            "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n"
+            "<b>Kripaya upar diye gaye dono channels join karein.</b>\n\n"
+            "📌 <b>Zaruri:</b> Dono channels ko Pin karke rakho, tabhi code milega!"
         )
-        bot.send_message(call.message.chat.id, success_message, parse_mode='HTML')
+        bot.send_message(call.message.chat.id, stylish_error, parse_mode='HTML')
 
 if __name__ == "__main__":
     keep_alive()
