@@ -151,27 +151,28 @@ users = get_users()
     markup = types.InlineKeyboardMarkup()
 
     btn1 = types.InlineKeyboardButton(
-        "500Gift Code",
+        "🚀 Claim ₹500 Now",
         url="https://t.me/+tmxMobgZYe82ZmNl"
     )
 
     btn2 = types.InlineKeyboardButton(
-        "FREE Cashback",
+        "🎁 Unlock Bonus Code",
         url="https://t.me/+uLvuR0wfZ6c5Yzdl"
     )
 
     btn3 = types.InlineKeyboardButton(
-        "Daily₹500",
+        "🎯 Claim Today's Gift",
         url="https://t.me/TECHNO_FUNDS"
     )
 
     btn4 = types.InlineKeyboardButton(
-        "Real Cashback",
-        url="https://t.me/+wZ3v70GNS2lhMmM1"
+        "🔓 unlock gift code",
+        
+        url="https://t.me/+MDQ7NXT1pN42NWU1"
     )
 
     claim_btn = types.InlineKeyboardButton(
-        "🎁 Claim Code",
+        "🎉 Get My Free Code ",
         callback_data="claim_code"
     )
 
