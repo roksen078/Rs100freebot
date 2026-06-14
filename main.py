@@ -22,7 +22,7 @@ def keep_alive():
 # --- BOT SETTINGS ---
 API_TOKEN = "8313028390:AAHYtwlM9mv-W9BeeJZ2q5CgjAQnhsIZVmM"
 ADMIN_ID = 1908832842
-START_IMAGE_URL = "https://t.me/daily_free_code1/3"
+START_IMAGE_URL = "https://t.me/TG_Looters/3"
 
 bot = telebot.TeleBot(API_TOKEN)
 DB_FILE = "users.json"
