@@ -26,7 +26,6 @@ START_IMAGE_URL = "https://t.me/daily_free_code1/3"
 
 bot = telebot.TeleBot(API_TOKEN)
 DB_FILE = "users.json"
-
 SETTINGS_FILE = "settings.json"
 
 def load_settings():
@@ -63,18 +62,14 @@ def get_users():
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_messages(message):
     users = get_users() 
-    
- settings = load_settings()
+    settings = load_settings()
 
-if (
-    settings["maintenance"]
-    and message.from_user.id != ADMIN_ID
-):
-    bot.send_message(
-        message.chat.id,
-        "🛠 Bot Maintenance Mode Me Hai"
-    )
-    return
+    if (settings["maintenance"] and message.from_user.id != ADMIN_ID):
+        bot.send_message(
+            message.chat.id,
+            "🛠 Bot Maintenance Mode Me Hai"
+        )
+        return
 
     # --- ADMIN LOGIC (BROADCAST EVERYTHING) ---
     if message.from_user.id == ADMIN_ID:
@@ -109,9 +104,8 @@ if (
         if message.content_type == 'text' and message.text == "/start":
             send_welcome(message)
 
-def send_welcome(message):
-
-    @bot.message_handler(commands=['admin'])
+# --- ADMIN COMMAND ---
+@bot.message_handler(commands=['admin'])
 def admin_panel(message):
     if message.from_user.id != ADMIN_ID:
         return
@@ -135,7 +129,10 @@ Text, Photo, Video send karo
 Automatically sab users ko chala jayega.
 """
     )
-users = get_users()
+
+# --- WELCOME FUNCTION ---
+def send_welcome(message):
+    users = get_users()
 
     if message.chat.id not in users:
         users.append(message.chat.id)
@@ -167,7 +164,6 @@ users = get_users()
 
     btn4 = types.InlineKeyboardButton(
         "🔓 unlock gift code",
-        
         url="https://t.me/+MDQ7NXT1pN42NWU1"
     )
 
@@ -196,6 +192,7 @@ users = get_users()
             parse_mode='HTML'
         )
 
+# --- CALLBACK HANDLER ---
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     if call.data == "claim_code":
@@ -219,3 +216,4 @@ def callback_query(call):
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
+    
