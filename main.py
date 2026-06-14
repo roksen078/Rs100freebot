@@ -20,7 +20,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAGYgmkTmCQ3DFLjAUYItZyhbBGgjgk7mMM"
+API_TOKEN = "8313028390:AAHN1kRgSLrVZeAnoMFZfgfIL5qLJkWNSD0"
 ADMIN_ID = 1908832842
 START_IMAGE_URL = "https://t.me/daily_free_code1/3"
 
