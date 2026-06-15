@@ -2,6 +2,7 @@ import telebot
 from telebot import types
 import json
 import os
+import re  # Link search logic ke liye
 from flask import Flask
 from threading import Thread
 
@@ -20,7 +21,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAGQb8H9nEz46OyXvy7Qg7E4QkT1KP8Uh0E"  # Yahan apna token dalein
+API_TOKEN = ""  # Yahan apna token dalein
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632  # Aapki channel ID
 
@@ -39,6 +40,7 @@ if not os.path.exists(MSG_LOG_FILE):
 def load_settings():
     default = {
         "maintenance": False,
+        "auto_pin": True,  # Pin feature ka admin control state
         "text": "<b>🎉 Join Official Big Promo Code Channel</b>\n\n<b>📅 Daily FREE BIG CODE</b>\n\n<b>👇 Join our channels below and claim your code!</b>",
         "image": "https://t.me/TG_Looters/3",
         "code": "FREE100LOOT",
@@ -154,6 +156,24 @@ def maintenance_off(message):
     save_settings(settings)
     bot.reply_to(message, "🛠 Maintenance Mode: OFF 🟢")
 
+@bot.message_handler(commands=['setpin'])
+def toggle_pin(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        opt = message.text.split(maxsplit=1)[1].strip().lower()
+        settings = load_settings()
+        if opt == 'on':
+            settings["auto_pin"] = True
+            bot.reply_to(message, "📌 Auto-Pin Mode: ON 🟢 (Ab posts automatic pin hongi)")
+        elif opt == 'off':
+            settings["auto_pin"] = False
+            bot.reply_to(message, "📌 Auto-Pin Mode: OFF 🔴 (Ab posts sirf send hongi)")
+        else:
+            bot.reply_to(message, "❌ Sirf 'on' ya 'off' likhein. Example: `/setpin on`")
+        save_settings(settings)
+    except:
+        bot.reply_to(message, "❌ Format galat hai. Example: `/setpin on`")
+
 @bot.message_handler(commands=['setlink'])
 def change_link(message):
     if message.from_user.id != ADMIN_ID: return
@@ -221,7 +241,8 @@ def admin_panel(message):
     panel_text = (
         "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
         "📊 <code>/stats</code> | 💾 <code>/export</code>\n"
-        "🔴 <code>/maintenance_on</code> | 🟢 <code>/maintenance_off</code>\n\n"
+        "🔴 <code>/maintenance_on</code> | 🟢 <code>/maintenance_off</code>\n"
+        "📌 <code>/setpin [on/off]</code> - Auto Pin chalu ya band karna\n\n"
         "🔗 <code>/setlink [1-4] [link]</code> - Welcome buttons links\n"
         "📝 <code>/settext [text]</code> - Welcome caption text\n"
         "🖼 <code>/setphoto [image_url]</code> - Welcome image banner\n"
@@ -229,7 +250,7 @@ def admin_panel(message):
         "🔗 <code>/setreglink [link]</code> - Broadcast button link badalna\n\n"
         "📢 <b>Broadcast Options:</b>\n"
         "1. Bot me direct forward karo -> Auto 'Forwarding Tag' ke sath jayega.\n"
-        "2. Bot me direct likho/photo bhejo -> Bina tag ke 'Register Link' button ke sath jayega.\n"
+        "2. Bot me direct likho/photo bhejo -> Text link utha kar Register button lagayega + Auto Pin karega.\n"
         "3. Connected channel me post daalo -> Live Edit support ke sath forward hoga."
     )
     bot.send_message(message.chat.id, panel_text, parse_mode='HTML')
@@ -251,9 +272,13 @@ def handle_messages(message):
     if message.from_user.id == ADMIN_ID:
         if message.text and message.text.startswith('/'): return
 
-        # Register Button Markup dynamically loading from settings
+        # Text ya Caption mein se link auto-detect karna
+        text_to_scan = message.text if message.text else (message.caption if message.caption else "")
+        urls = re.findall(r'(https?://\S+)', text_to_scan)
+        
         markup = types.InlineKeyboardMarkup()
-        register_btn = types.InlineKeyboardButton("Register Link", url=settings.get("reg_link"))
+        reg_url = urls[0] if urls else settings.get("reg_link")
+        register_btn = types.InlineKeyboardButton("Register Link", url=reg_url)
         markup.add(register_btn)
 
         bot.send_message(ADMIN_ID, f"🚀 {len(users)} users ko broadcast shuru...")
@@ -261,12 +286,18 @@ def handle_messages(message):
         
         for user_id in users:
             try:
-                # Agar message admin ne kisi channel se FORWARD kiya hai, toh forward_message chalega (With Tag)
+                # 1. Forwarded content (With Tag)
                 if message.forward_from_chat or message.forward_from or message.forward_sender_name:
                     bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
-                # Agar admin ne DIRECT likha ya khud photo select karke bheji hai, toh copy_message chalega button ke sath
+                # 2. Direct broadcast content (Bina Tag Ke + Button)
                 else:
-                    bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
+                    sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
+                    
+                    # Agar admin ne auto_pin chalu rakha hai toh message pin hoga
+                    if settings.get("auto_pin", True):
+                        try:
+                            bot.pin_chat_message(chat_id=user_id, message_id=sent_msg.message_id, disable_notification=True)
+                        except: pass
                 count += 1
             except: pass
             
