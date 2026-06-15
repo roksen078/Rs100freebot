@@ -20,7 +20,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAHYtwlM9mv-W9BeeJZ2q5CgjAQnhsIZVmM"  # Yahan apna token dalein
+API_TOKEN = "8313028390:AAGQb8H9nEz46OyXvy7Qg7E4QkT1KP8Uh0E"  # Yahan apna token dalein
 ADMIN_ID = 1908832842
 
 bot = telebot.TeleBot(API_TOKEN)
