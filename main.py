@@ -256,8 +256,8 @@ def callback_query(call):
         bot.answer_callback_query(call.id, "Checking...")
         stylish_error = (
             "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n"
-            "<b>Kripaya upar diye gaye dono channels join karein.</b>\n\n"
-            "📌 <b>Zaruri:</b> Dono channels ko Pin karke rakho, tabhi code milega!"
+            "<b>Kripaya upar diye gaye 4 channels join karein.</b>\n\n"
+            "📌 <b>Zaruri:</b> 4 channels ko Pin karke rakho, tabhi code milega!"
         )
         bot.send_message(call.message.chat.id, stylish_error, parse_mode='HTML')
 
