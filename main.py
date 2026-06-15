@@ -21,8 +21,8 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAFNaMtyuopYA8idFHXb5jfBL3MB_-wA5jU"  # <--- Is string ke andar apna token copy-paste karein!
+# --- BOT SETTINGS FROM ENVIRONMENT ---
+API_TOKEN = os.environ.get('BOT_TOKEN', '') # Automatic Render se Token uthayega
 ADMIN_ID = 1908832842  # Main Supreme Owner ID
 CONNECTED_CHANNEL = -1002145879632
 
@@ -389,7 +389,8 @@ def del_button_command(message):
             save_settings(settings)
             bot.reply_to(message, f"✅ Button '{removed['text']}' deleted!")
         else: bot.reply_to(message, "❌ Button not found.")
-    except: bot.reply_to(message, "❌ Use: `/delbutton [Number]`")
+    except:
+        bot.reply_to(message, "❌ Use: `/delbutton [Number]`")
 
 @bot.message_handler(commands=['seterrortext'])
 def change_error_text_command(message):
@@ -501,4 +502,4 @@ def handle_messages(message):
         bot.send_message(message.chat.id, "🛠 Bot Maintenance Mode Me Hai.")
         return
 
-    if check_permission(message.from_user.id, "broa
+    if check_permission(message.from_user.id, "
