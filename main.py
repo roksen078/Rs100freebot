@@ -22,7 +22,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAEzKGQ8XC8jYTkKuV8gX_a1ruWSMElNLYg"  # Yahan apna token dalein
+API_TOKEN = "8313028390:AAEnVQoOrMftLowBGxDaEL8-thhMiOqmPNU"  # Yahan apna token dalein
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632
 
@@ -31,6 +31,7 @@ DB_FILE = "users.json"
 SETTINGS_FILE = "settings.json"
 MSG_LOG_FILE = "msg_log.json"
 BAN_FILE = "banned_users.json"
+CLICK_FILE = "clicks.json"  # Clicks ka data save karne ke liye
 
 # --- INIT FILES ---
 if not os.path.exists(DB_FILE):
@@ -42,10 +43,12 @@ if not os.path.exists(MSG_LOG_FILE):
 if not os.path.exists(BAN_FILE):
     with open(BAN_FILE, "w") as f: json.dump([], f)
 
+if not os.path.exists(CLICK_FILE):
+    with open(CLICK_FILE, "w") as f: json.dump({}, f)
+
 cancel_broadcast_flag = False
 
 def load_settings():
-    # Aapka bheja hua exact Error Text yahan bold aur lines space ke sath default set hai
     default = {
         "maintenance": False,
         "auto_pin": True,
@@ -123,6 +126,14 @@ def load_msg_log():
 def save_msg_log(data):
     with open(MSG_LOG_FILE, "w") as f: json.dump(data, f)
 
+def load_clicks():
+    try:
+        with open(CLICK_FILE, "r") as f: return json.load(f)
+    except: return {}
+
+def save_clicks(data):
+    with open(CLICK_FILE, "w") as f: json.dump(data, f)
+
 # --- CHANNEL POST HANDLERS ---
 @bot.channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_channel_post(message):
@@ -153,6 +164,30 @@ def handle_edited_channel_post(message):
                 except: pass
 
 # --- ADMIN COMMANDS HANDLERS ---
+@bot.message_handler(commands=['clickstats'])
+def show_click_stats(message):
+    if message.from_user.id != ADMIN_ID: return
+    clicks = load_clicks()
+    settings = load_settings()
+    buttons = settings.get("dynamic_buttons", [])
+    
+    report = "📊 <b>LIVE BUTTON CLICKS REPORT</b>\n\n"
+    
+    # Dynamic buttons ke clicks dikhao
+    for i, btn in enumerate(buttons):
+        btn_id = f"btn_{i}"
+        count = clicks.get(btn_id, 0)
+        report += f"🔘 Button {i+1}: <b>{btn['text']}</b>\n🎯 Total Clicks: <code>{count}</code>\n\n"
+        
+    # Broadcast Register Link aur Claim button ke clicks
+    bc_count = clicks.get("broadcast_reg", 0)
+    claim_count = clicks.get("claim_btn_click", 0)
+    
+    report += f"📢 Broadcast Register Link Clicks: <code>{bc_count}</code>\n"
+    report += f"🎉 Claim Button Clicks: <code>{claim_count}</code>"
+    
+    bot.reply_to(message, report, parse_mode='HTML')
+
 @bot.message_handler(commands=['stats'])
 def show_stats(message):
     if message.from_user.id != ADMIN_ID: return
@@ -258,6 +293,13 @@ def del_button_command(message):
             removed = buttons.pop(btn_index)
             settings["dynamic_buttons"] = buttons
             save_settings(settings)
+            
+            # Click count reset karo deleted button ka
+            clicks = load_clicks()
+            btn_id = f"btn_{btn_index}"
+            if btn_id in clicks: clicks[btn_id] = 0
+            save_clicks(clicks)
+            
             bot.reply_to(message, f"✅ Button '{removed['text']}' ko delete kar diya gaya!")
         else: bot.reply_to(message, "❌ Is number ka koi button nahi hai.")
     except:
@@ -325,19 +367,18 @@ def admin_panel(message):
     if message.from_user.id != ADMIN_ID: return
     panel_text = (
         "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
-        "📊 <code>/stats</code> | 💾 <code>/export</code>\n"
-        "🔴 <code>/maintenance_on</code> | 🟢 <code>/maintenance_off</code>\n"
-        "📌 <code>/setpin [on/off]</code> - Pin Control\n"
+        "📊 <code>/stats</code> | 📈 <code>/clickstats</code>\n"
+        "💾 <code>/export</code> | 🔴 <code>/maintenance_on</code>\n"
+        "🟢 <code>/maintenance_off</code> | 📌 <code>/setpin [on/off]</code>\n"
         "🚫 <code>/ban [ID]</code> | ✅ <code>/unban [ID]</code>\n\n"
         "🔘 <b>Buttons Control:</b>\n"
         "➕ <code>/addbutton [Num] [Naam] | [Link]</code>\n"
         "➖ <code>/delbutton [Num]</code>\n\n"
         "📝 <b>Texts Control:</b>\n"
-        "⏳ <code>/setprocesstext [text]</code> - Processing Text\n"
-        "⚠️ <code>/seterrortext [text]</code> - Error Text Change\n"
-        "📝 <code>/settext [text]</code> - Welcome Text\n"
-        "🖼 <code>/setphoto [url]</code> - Welcome Image\n"
-        "🎁 <code>/setcode [code]</code> - Code Change"
+        "⏳ <code>/setprocesstext [text]</code>\n"
+        "⚠️ <code>/seterrortext [text]</code>\n"
+        "📝 <code>/settext [text]</code> | 🖼 <code>/setphoto [url]</code>\n"
+        "🎁 <code>/setcode [code]</code>"
     )
     bot.send_message(message.chat.id, panel_text, parse_mode='HTML')
 
@@ -378,10 +419,15 @@ def handle_messages(message):
         text_to_scan = message.text if message.text else (message.caption if message.caption else "")
         urls = re.findall(r'(https?://\S+)', text_to_scan)
         
+        # Broadcast main link tracking callback data ke sath lagaya
         markup = types.InlineKeyboardMarkup()
-        reg_url = urls[0] if urls else settings.get("reg_link")
-        register_btn = types.InlineKeyboardButton("Register Link", url=reg_url)
+        register_btn = types.InlineKeyboardButton("Register Link", callback_data="click_bc_reg")
         markup.add(register_btn)
+        
+        # Temp save for real URL mapping during click
+        if urls:
+            settings["reg_link"] = urls[0]
+            save_settings(settings)
 
         cancel_markup = types.InlineKeyboardMarkup()
         cancel_btn = types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast")
@@ -446,8 +492,10 @@ def send_welcome(message):
 
     markup = types.InlineKeyboardMarkup()
     row_btns = []
-    for btn in buttons:
-        row_btns.append(types.InlineKeyboardButton(btn["text"], url=btn["url"]))
+    
+    # Buttons ko dynamic callback_data tracking format me badla
+    for i, btn in enumerate(buttons):
+        row_btns.append(types.InlineKeyboardButton(btn["text"], callback_data=f"track_click_{i}"))
         if len(row_btns) == 2:
             markup.row(row_btns[0], row_btns[1])
             row_btns = []
@@ -459,23 +507,12 @@ def send_welcome(message):
     try: bot.send_photo(message.chat.id, settings.get("image"), caption=settings.get("text"), reply_markup=markup, parse_mode='HTML')
     except: bot.send_message(message.chat.id, settings.get("text"), reply_markup=markup, parse_mode='HTML')
 
-# --- CALLBACK HANDLER FOR TIMED PROCESSING ---
+# --- SMART CALLBACK HANDLER FOR TIMED PROCESSING & TRACKING ---
 @bot.callback_query_handler(func=lambda call: call.data != "cancel_broadcast")
 def callback_query(call):
-    if call.data == "claim_code":
-        settings = load_settings()
-        user_id = call.message.chat.id
-        
-        bot.answer_callback_query(call.id, "⏳ Verifying your channels...")
-        proc_msg = bot.send_message(user_id, settings.get("process_text"), parse_mode='HTML')
-        
-        # 5 second ka timer chlega aur fir badal jayega
-        time.sleep(5)
-        
-        try:
-            bot.edit_message_text(text=settings.get("error_text"), chat_id=user_id, message_id=proc_msg.message_id, parse_mode='HTML')
-        except: pass
-
-if __name__ == "__main__":
-    keep_alive()
-    bot.infinity_polling()
+    settings = load_settings()
+    clicks = load_clicks()
+    user_id = call.message.chat.id
+    
+    # 1. Processing Timer & Error Alert Logic
+    if call.
