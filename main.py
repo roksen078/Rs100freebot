@@ -36,6 +36,16 @@ MSG_LOG_FILE = "msg_log.json"
 BAN_FILE = "banned_users.json"
 CLICK_FILE = "clicks.json"
 
+# FORCE RESET PURANI CRASHED FILES (Taaki koi data mismatch na ho)
+if os.path.exists(SETTINGS_FILE):
+    try:
+        with open(SETTINGS_FILE, "r") as f:
+            test_data = json.load(f)
+            if "admins" in test_data:  # Agar purana admin kachra bacha hai, toh hatao
+                os.remove(SETTINGS_FILE)
+    except:
+        os.remove(SETTINGS_FILE)
+
 def init_file(name, default):
     if not os.path.exists(name) or os.stat(name).st_size == 0:
         with open(name, "w") as f:
@@ -71,10 +81,7 @@ def load_settings():
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r") as f:
-                data = json.load(f)
-                for k, v in default.items():
-                    if k not in data: data[k] = v
-                return data
+                return json.load(f)
         except: pass
     with open(SETTINGS_FILE, "w") as f:
         json.dump(default, f)
@@ -477,9 +484,4 @@ def callback_query(call):
             except: pass
     elif call.data == "click_success_app":
         clicks["app_btn_click"] = clicks.get("app_btn_click", 0) + 1
-        with open(CLICK_FILE, "w") as f: json.dump(clicks, f)
-        bot.answer_callback_query(call.id, url=settings.get("reg_link"))
-    elif call.data.startswith("click_bc_"):
-        msg_id_str = call.data.split("_")[2]
-        click_key = f"bc_msg_{msg_id_str}"
-        clicks[click_
+        with open(CLICK_FILE, "w") as f: json.
