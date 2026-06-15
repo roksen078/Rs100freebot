@@ -22,7 +22,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAGVcEQWwbagODIU9x24tTv7NP4yusx4bGA"  # Yahan apna token dalein
+API_TOKEN = "8313028390:AAGB4vqlcdlVwGEXr5U9HMSonLKZ-cSvy5I"  # Yahan apna token dalein
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632
 
