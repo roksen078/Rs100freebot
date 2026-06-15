@@ -12,11 +12,10 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot is alive and running safely!"
+    return "Bot is alive!"
 
 def run():
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
 
 def keep_alive():
     t = Thread(target=run)
@@ -24,7 +23,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = os.environ.get('BOT_TOKEN', '').strip()
+API_TOKEN = "8313028390:AAE-eD9JNnpXjxpFa8xxY_FvMUZDB_aoBj0"  # <--- Iske andar aapna BotFather wala Token paste kar dijiye!
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632
 
@@ -34,16 +33,6 @@ SETTINGS_FILE = "settings.json"
 MSG_LOG_FILE = "msg_log.json"
 BAN_FILE = "banned_users.json"
 CLICK_FILE = "clicks.json"
-
-# SYSTEM FORCE RESET (Agar purani file mein multi-admin data mismatch hai)
-if os.path.exists(SETTINGS_FILE):
-    try:
-        with open(SETTINGS_FILE, "r") as f:
-            test_data = json.load(f)
-            if "admins" in test_data:
-                os.remove(SETTINGS_FILE)
-    except:
-        os.remove(SETTINGS_FILE)
 
 # --- INIT FILES ---
 if not os.path.exists(DB_FILE):
@@ -84,7 +73,11 @@ def load_settings():
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r") as f:
-                return json.load(f)
+                current_data = json.load(f)
+                for key, val in default.items():
+                    if key not in current_data:
+                        current_data[key] = val
+                return current_data
         except: pass
 
     with open(SETTINGS_FILE, "w") as f: json.dump(default, f)
@@ -180,11 +173,16 @@ def toggle_success_mode(message):
     try:
         opt = message.text.split(maxsplit=1)[1].strip().lower()
         settings = load_settings()
-        settings["success_mode"] = (opt == 'on')
+        if opt == 'on':
+            settings["success_mode"] = True
+            msg = "🟢 <b>Success Mode: ON</b>"
+        else:
+            settings["success_mode"] = False
+            msg = "🔴 <b>Success Mode: OFF</b>"
         save_settings(settings)
-        status = "ON 🟢" if opt == 'on' else "OFF 🔴"
-        bot.reply_to(message, f"<b>Success Mode: {status}</b>", parse_mode='HTML')
-    except: pass
+        bot.reply_to(message, msg, parse_mode='HTML')
+    except:
+        bot.reply_to(message, "❌ Format: <code>/switchmode [on/off]</code>", parse_mode='HTML')
 
 @bot.message_handler(commands=['setlink'])
 def change_link(message):
@@ -226,7 +224,7 @@ def show_click_stats(message):
 @bot.message_handler(commands=['stats'])
 def show_stats(message):
     if message.from_user.id != ADMIN_ID: return
-    bot.reply_to(message, f"👥 Total Users: <code>{len(get_users())}</code>\n🚫 Banned: <code>{len(get_banned_users())}</code>", parse_mode='HTML')
+    bot.reply_to(message, f"📊 <b>Bot Stats:</b>\n👥 Total Users: <code>{len(get_users())}</code>\n🚫 Banned: <code>{len(get_banned_users())}</code>", parse_mode='HTML')
 
 @bot.message_handler(commands=['export'])
 def export_database(message):
@@ -504,5 +502,4 @@ def callback_query(call):
             success_markup.add(types.InlineKeyboardButton("🔗 Register/Claim Button", callback_data="click_success_app"))
             success_text = f"✅ <b>VERIFICATION SUCCESSFUL!</b>\n\n🎁 <b>Code: {settings.get('code')}</b>\n\n👇 <b>Click below to claim:</b>"
             try:
-                bot.delete_message(chat_id=user_id, message_id=proc_msg.message_id)
-                bot.send_photo(chat_id
+                bot.delete_message(
