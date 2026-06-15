@@ -22,7 +22,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAGeUtfIhQqORxERZwkIXagB7Ctg0QcjDpc"  # Yahan apna token dalein
+API_TOKEN = "8313028390:AAFNaMtyuopYA8idFHXb5jfBL3MB_-wA5jU"  # Yahan apna token dalein
 ADMIN_ID = 1908832842  # Main Supreme Owner ID
 CONNECTED_CHANNEL = -1002145879632
 
@@ -54,7 +54,7 @@ def load_settings():
         "auto_pin": True,
         "success_mode": False,
         "last_pinned_msgs": {},
-        "admins": {str(ADMIN_ID): ["all"]},  # Admin permission database
+        "admins": {str(ADMIN_ID): ["all"]},
         "text": "<b>🎉 Join Official Big Promo Code Channel</b>\n\n<b>📅 Daily FREE BIG CODE</b>\n\n<b>👇 Join our channels below and claim your code!</b>",
         "image": "https://t.me/TG_Looters/3",
         "success_image": "https://t.me/TG_Looters/3",
@@ -474,7 +474,6 @@ def change_code(message):
 
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
-    # Kisi bhi valid admin ko panel list dikh jayegi
     if not check_permission(message.from_user.id, "broadcast") and not check_permission(message.from_user.id, "buttons") and not check_permission(message.from_user.id, "settings") and not check_permission(message.from_user.id, "users") and not check_permission(message.from_user.id, "mode"): return
     panel_text = (
         "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
@@ -504,4 +503,4 @@ def admin_panel(message):
 def handle_start(message):
     banned = get_banned_users()
     if message.from_user.id in banned:
-  
+        bot.send_message(message.chat.id, "❌ Aapko is bot se permanent BAN kar diya 
