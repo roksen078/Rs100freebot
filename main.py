@@ -22,7 +22,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAGB4vqlcdlVwGEXr5U9HMSonLKZ-cSvy5I"  # Yahan apna token dalein
+API_TOKEN = "8313028390:AAEzKGQ8XC8jYTkKuV8gX_a1ruWSMElNLYg"  # Yahan apna token dalein
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632
 
@@ -45,7 +45,7 @@ if not os.path.exists(BAN_FILE):
 cancel_broadcast_flag = False
 
 def load_settings():
-    # Aapka bataya hua exact message yahan default set kar diya hai
+    # Aapka bheja hua exact Error Text yahan bold aur lines space ke sath default set hai
     default = {
         "maintenance": False,
         "auto_pin": True,
@@ -54,8 +54,8 @@ def load_settings():
         "image": "https://t.me/TG_Looters/3",
         "code": "FREE100LOOT",
         "reg_link": "https://share-rxapq9cajg.iw7.io/share/agent/SD08SPTT?data=eyJtljoxLCJsyW5kIjoxLCJpZCI6IjAifQ==",
-        "error_text": "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n<b>Kripaya upar diye gaye dono channels join karein.</b>\n\n📌 <b>Zaruri:</b> Dono channels ko Pin karke rakho, tabhi code milega!",
-        "process_text": "⏳ <b>Verification in Progress...</b>\n🔍 <b>Checking if you pinned all 4 channels...</b>\n⏱️ <b>Please wait 5 seconds...</b>", 
+        "error_text": "⚠️ <b>Aapne Join Nahi Kiya!</b>\n\n<b>Kripaya upar diye gaye 4 channels join karein.</b>\n\n📌 <b>Zaruri: 4 channels ko Pin karke rakho, tabhi code milega!</b>",
+        "process_text": "⏳ <b>Verification in Progress...</b>\n\n🔍 <b>Checking if you pinned all 4 channels...</b>\n\n⏱️ <b>Please wait 5 seconds...</b>", 
         "dynamic_buttons": [
             {"text": "🚀 Claim ₹500", "url": "https://t.me/+tmxMobgZYe82ZmNl"},
             {"text": "🎁 Unlock Code", "url": "https://t.me/+uLvuR0wfZ6c5Yzdl"},
@@ -466,14 +466,12 @@ def callback_query(call):
         settings = load_settings()
         user_id = call.message.chat.id
         
-        # 1. Pop-up alert aur message par aapka bataya hua exact processing text dikhega
         bot.answer_callback_query(call.id, "⏳ Verifying your channels...")
         proc_msg = bot.send_message(user_id, settings.get("process_text"), parse_mode='HTML')
         
-        # 2. 5 second ka pause
+        # 5 second ka timer chlega aur fir badal jayega
         time.sleep(5)
         
-        # 3. 5 second baad automatic aapka set kiya hua error text dikhega
         try:
             bot.edit_message_text(text=settings.get("error_text"), chat_id=user_id, message_id=proc_msg.message_id, parse_mode='HTML')
         except: pass
