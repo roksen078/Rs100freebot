@@ -511,4 +511,5 @@ def handle_messages(message):
                     
                     if settings.get("auto_pin", True):
                         if str(user_id) in last_pinned:
-                            try: bot.unpin_ch
+                            try: 
+           
