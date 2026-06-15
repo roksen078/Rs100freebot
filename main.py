@@ -3,6 +3,7 @@ from telebot import types
 import json
 import os
 import re
+import time
 from flask import Flask
 from threading import Thread
 
@@ -23,7 +24,7 @@ def keep_alive():
 # --- BOT SETTINGS ---
 API_TOKEN = "8313028390:AAGVcEQWwbagODIU9x24tTv7NP4yusx4bGA"  # Yahan apna token dalein
 ADMIN_ID = 1908832842
-CONNECTED_CHANNEL = -1002145879632  # Aapki channel ID
+CONNECTED_CHANNEL = -1002145879632
 
 bot = telebot.TeleBot(API_TOKEN)
 DB_FILE = "users.json"
@@ -44,6 +45,7 @@ if not os.path.exists(BAN_FILE):
 cancel_broadcast_flag = False
 
 def load_settings():
+    # Aapka bataya hua exact message yahan default set kar diya hai
     default = {
         "maintenance": False,
         "auto_pin": True,
@@ -52,7 +54,8 @@ def load_settings():
         "image": "https://t.me/TG_Looters/3",
         "code": "FREE100LOOT",
         "reg_link": "https://share-rxapq9cajg.iw7.io/share/agent/SD08SPTT?data=eyJtljoxLCJsyW5kIjoxLCJpZCI6IjAifQ==",
-        "error_text": "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n<b>Kripaya upar diye gaye dono channels join karein.</b>\n\n📌 <b>Zaruri:</b> Dono channels ko Pin karke rakho, tabhi code milega!", # Default Error Text
+        "error_text": "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n<b>Kripaya upar diye gaye dono channels join karein.</b>\n\n📌 <b>Zaruri:</b> Dono channels ko Pin karke rakho, tabhi code milega!",
+        "process_text": "⏳ <b>Verification in Progress...</b>\n🔍 <b>Checking if you pinned all 4 channels...</b>\n⏱️ <b>Please wait 5 seconds...</b>", 
         "dynamic_buttons": [
             {"text": "🚀 Claim ₹500", "url": "https://t.me/+tmxMobgZYe82ZmNl"},
             {"text": "🎁 Unlock Code", "url": "https://t.me/+uLvuR0wfZ6c5Yzdl"},
@@ -242,7 +245,7 @@ def add_button_command(message):
         save_settings(settings)
         bot.reply_to(message, msg)
     except:
-        bot.reply_to(message, "❌ Format: `/addbutton [Number] [Naam] | [Link]`\nExample: `/addbutton 1 Google | https://google.com`")
+        bot.reply_to(message, "❌ Format: `/addbutton [Number] [Naam] | [Link]`")
 
 @bot.message_handler(commands=['delbutton'])
 def del_button_command(message):
@@ -251,14 +254,12 @@ def del_button_command(message):
         btn_index = int(message.text.split()[1]) - 1
         settings = load_settings()
         buttons = settings.get("dynamic_buttons", [])
-        
         if 0 <= btn_index < len(buttons):
             removed = buttons.pop(btn_index)
             settings["dynamic_buttons"] = buttons
             save_settings(settings)
             bot.reply_to(message, f"✅ Button '{removed['text']}' ko delete kar diya gaya!")
-        else:
-            bot.reply_to(message, "❌ Is number ka koi button nahi hai.")
+        else: bot.reply_to(message, "❌ Is number ka koi button nahi hai.")
     except:
         bot.reply_to(message, "❌ Format: `/delbutton [Number]`")
 
@@ -273,6 +274,18 @@ def change_error_text_command(message):
         bot.reply_to(message, "✅ Error Alert Text badal gaya!")
     except:
         bot.reply_to(message, "❌ Format: `/seterrortext [text]`")
+
+@bot.message_handler(commands=['setprocesstext'])
+def change_process_text_command(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        new_proc = message.text.split(maxsplit=1)[1]
+        settings = load_settings()
+        settings["process_text"] = new_proc
+        save_settings(settings)
+        bot.reply_to(message, "✅ Processing Timer Text badal gaya!")
+    except:
+        bot.reply_to(message, "❌ Format: `/setprocesstext [text]`")
 
 @bot.message_handler(commands=['settext'])
 def change_text(message):
@@ -320,6 +333,7 @@ def admin_panel(message):
         "➕ <code>/addbutton [Num] [Naam] | [Link]</code>\n"
         "➖ <code>/delbutton [Num]</code>\n\n"
         "📝 <b>Texts Control:</b>\n"
+        "⏳ <code>/setprocesstext [text]</code> - Processing Text\n"
         "⚠️ <code>/seterrortext [text]</code> - Error Text Change\n"
         "📝 <code>/settext [text]</code> - Welcome Text\n"
         "🖼 <code>/setphoto [url]</code> - Welcome Image\n"
@@ -414,50 +428,55 @@ def handle_messages(message):
         report_text = (
             "📢 <b>BROADCAST DELIVERY REPORT</b>\n\n"
             f"✅ Successfully Sent: <code>{count}</code> users\n"
-            f"❌ Blocked/Kicked: <code>{blocked_count}</code> users (Database cleaned)\n"
+            f"❌ Blocked/Kicked: <code>{blocked_count}</code> users\n"
             f"⚠️ Failed/Error: <code>{failed_count}</code> users\n\n"
             f"📊 Remaining Active Users: <code>{len(users)}</code>"
         )
-        if cancel_broadcast_flag:
-            report_text = "⚠️ <b>Broadcast Canceled Midway!</b>\n\n" + report_text
+        if cancel_broadcast_flag: report_text = "⚠️ <b>Broadcast Canceled Midway!</b>\n\n" + report_text
         bot.send_message(ADMIN_ID, report_text, parse_mode='HTML')
     else:
         if message.content_type == 'text' and message.text == "/start":
             send_welcome(message)
 
-# --- WELCOME FUNCTION (DYNAMIC LOADING) ---
+# --- WELCOME FUNCTION ---
 def send_welcome(message):
     save_user(message.chat.id)
     settings = load_settings()
     buttons = settings.get("dynamic_buttons", [])
 
     markup = types.InlineKeyboardMarkup()
-    
-    # 2-2 buttons per row structure dyamically adding
     row_btns = []
     for btn in buttons:
         row_btns.append(types.InlineKeyboardButton(btn["text"], url=btn["url"]))
         if len(row_btns) == 2:
             markup.row(row_btns[0], row_btns[1])
             row_btns = []
-    if row_btns:
-        markup.row(row_btns[0])
+    if row_btns: markup.row(row_btns[0])
 
     claim_btn = types.InlineKeyboardButton("🎉 Get My Free Code", callback_data="claim_code")
     markup.row(claim_btn)
 
-    try:
-        bot.send_photo(message.chat.id, settings.get("image"), caption=settings.get("text"), reply_markup=markup, parse_mode='HTML')
-    except:
-        bot.send_message(message.chat.id, settings.get("text"), reply_markup=markup, parse_mode='HTML')
+    try: bot.send_photo(message.chat.id, settings.get("image"), caption=settings.get("text"), reply_markup=markup, parse_mode='HTML')
+    except: bot.send_message(message.chat.id, settings.get("text"), reply_markup=markup, parse_mode='HTML')
 
-# --- CALLBACK HANDLER ---
+# --- CALLBACK HANDLER FOR TIMED PROCESSING ---
 @bot.callback_query_handler(func=lambda call: call.data != "cancel_broadcast")
 def callback_query(call):
     if call.data == "claim_code":
         settings = load_settings()
-        bot.answer_callback_query(call.id, "Checking...")
-        bot.send_message(call.message.chat.id, settings.get("error_text"), parse_mode='HTML')
+        user_id = call.message.chat.id
+        
+        # 1. Pop-up alert aur message par aapka bataya hua exact processing text dikhega
+        bot.answer_callback_query(call.id, "⏳ Verifying your channels...")
+        proc_msg = bot.send_message(user_id, settings.get("process_text"), parse_mode='HTML')
+        
+        # 2. 5 second ka pause
+        time.sleep(5)
+        
+        # 3. 5 second baad automatic aapka set kiya hua error text dikhega
+        try:
+            bot.edit_message_text(text=settings.get("error_text"), chat_id=user_id, message_id=proc_msg.message_id, parse_mode='HTML')
+        except: pass
 
 if __name__ == "__main__":
     keep_alive()
