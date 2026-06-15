@@ -12,10 +12,11 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot is alive!"
+    return "Bot is alive and running safely!"
 
 def run():
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
 
 def keep_alive():
     t = Thread(target=run)
@@ -23,7 +24,6 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-# Environment variable se token uthayega taaki 401/404 Error na aaye
 API_TOKEN = os.environ.get('BOT_TOKEN', '').strip()
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632
@@ -34,6 +34,16 @@ SETTINGS_FILE = "settings.json"
 MSG_LOG_FILE = "msg_log.json"
 BAN_FILE = "banned_users.json"
 CLICK_FILE = "clicks.json"
+
+# SYSTEM FORCE RESET (Agar purani file mein multi-admin data mismatch hai)
+if os.path.exists(SETTINGS_FILE):
+    try:
+        with open(SETTINGS_FILE, "r") as f:
+            test_data = json.load(f)
+            if "admins" in test_data:
+                os.remove(SETTINGS_FILE)
+    except:
+        os.remove(SETTINGS_FILE)
 
 # --- INIT FILES ---
 if not os.path.exists(DB_FILE):
@@ -74,11 +84,7 @@ def load_settings():
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r") as f:
-                current_data = json.load(f)
-                for key, val in default.items():
-                    if key not in current_data:
-                        current_data[key] = val
-                return current_data
+                return json.load(f)
         except: pass
 
     with open(SETTINGS_FILE, "w") as f: json.dump(default, f)
@@ -174,16 +180,11 @@ def toggle_success_mode(message):
     try:
         opt = message.text.split(maxsplit=1)[1].strip().lower()
         settings = load_settings()
-        if opt == 'on':
-            settings["success_mode"] = True
-            msg = "🟢 <b>Success Mode: ON</b>"
-        else:
-            settings["success_mode"] = False
-            msg = "🔴 <b>Success Mode: OFF</b>"
+        settings["success_mode"] = (opt == 'on')
         save_settings(settings)
-        bot.reply_to(message, msg, parse_mode='HTML')
-    except:
-        bot.reply_to(message, "❌ Format: <code>/switchmode [on/off]</code>", parse_mode='HTML')
+        status = "ON 🟢" if opt == 'on' else "OFF 🔴"
+        bot.reply_to(message, f"<b>Success Mode: {status}</b>", parse_mode='HTML')
+    except: pass
 
 @bot.message_handler(commands=['setlink'])
 def change_link(message):
@@ -193,7 +194,7 @@ def change_link(message):
         settings = load_settings()
         settings["reg_link"] = new_link
         save_settings(settings)
-        bot.reply_to(message, f"✅ <b>Link update ho gaya!</b>", parse_mode='HTML')
+        bot.reply_to(message, f"✅ <b>Link updated!</b>", parse_mode='HTML')
     except: pass
 
 @bot.message_handler(commands=['setsuccessphoto'])
@@ -204,7 +205,7 @@ def change_success_photo(message):
         settings = load_settings()
         settings["success_image"] = new_photo
         save_settings(settings)
-        bot.reply_to(message, f"✅ <b>Success Photo Link badal gayi!</b>", parse_mode='HTML')
+        bot.reply_to(message, f"✅ <b>Photo Link Updated!</b>", parse_mode='HTML')
     except: pass
 
 @bot.message_handler(commands=['clickstats'])
@@ -225,7 +226,7 @@ def show_click_stats(message):
 @bot.message_handler(commands=['stats'])
 def show_stats(message):
     if message.from_user.id != ADMIN_ID: return
-    bot.reply_to(message, f"📊 <b>Bot Stats:</b>\n👥 Total Users: <code>{len(get_users())}</code>\n🚫 Banned: <code>{len(get_banned_users())}</code>", parse_mode='HTML')
+    bot.reply_to(message, f"👥 Total Users: <code>{len(get_users())}</code>\n🚫 Banned: <code>{len(get_banned_users())}</code>", parse_mode='HTML')
 
 @bot.message_handler(commands=['export'])
 def export_database(message):
@@ -396,7 +397,9 @@ def admin_panel(message):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    if message.from_user.id in get_banned_users(): return
+    if message.from_user.id in get_banned_users():
+        bot.send_message(message.chat.id, "❌ Banned.")
+        return
     send_welcome(message)
 
 # --- BROADCAST CANCEL HANDLER ---
@@ -501,4 +504,5 @@ def callback_query(call):
             success_markup.add(types.InlineKeyboardButton("🔗 Register/Claim Button", callback_data="click_success_app"))
             success_text = f"✅ <b>VERIFICATION SUCCESSFUL!</b>\n\n🎁 <b>Code: {settings.get('code')}</b>\n\n👇 <b>Click below to claim:</b>"
             try:
-                bot.delete_message(chat_id=user_id, message_id=pr
+                bot.delete_message(chat_id=user_id, message_id=proc_msg.message_id)
+                bot.send_photo(chat_id
