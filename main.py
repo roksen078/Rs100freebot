@@ -12,7 +12,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot is active"
+    return "Bot is alive and running safely!"
 
 def run():
     port = int(os.environ.get('PORT', 5000))
@@ -23,9 +23,9 @@ def keep_alive():
     t.daemon = True
     t.start()
 
-# --- INITIALIZE SYSTEM SETTINGS ---
+# --- BOT SETTINGS ---
 API_TOKEN = os.environ.get('BOT_TOKEN', '').strip()
-ADMIN_ID = 1908832842  # Main Supreme Owner ID
+ADMIN_ID = 1908832842  # Aapki Owner ID
 CONNECTED_CHANNEL = -1002145879632
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -54,7 +54,6 @@ def load_settings():
         "auto_pin": True,
         "success_mode": False,
         "last_pinned_msgs": {},
-        "admins": {str(ADMIN_ID): ["all"]},
         "text": "<b>🎉 Join Official Big Promo Code Channel</b>\n\n<b>📅 Daily FREE BIG CODE</b>\n\n<b>👇 Join our channels below and claim your code!</b>",
         "image": "https://t.me/TG_Looters/3",
         "success_image": "https://t.me/TG_Looters/3",
@@ -113,53 +112,7 @@ def unban_user_id(user_id):
         banned.remove(user_id)
         with open(BAN_FILE, "w") as f: json.dump(banned, f)
 
-def check_permission(user_id, required_perm):
-    settings = load_settings()
-    admins = settings.get("admins", {})
-    uid = str(user_id)
-    if uid in admins:
-        return "all" in admins[uid] or required_perm in admins[uid]
-    return False
-
-# --- DYNAMIC ADMIN MANAGEMENT ---
-@bot.message_handler(commands=['addadmin'])
-def add_admin_command(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        parts = message.text.split()
-        target_id = parts[1].strip()
-        perm = parts[2].strip().lower()
-        settings = load_settings()
-        if "admins" not in settings: settings["admins"] = {}
-        if target_id not in settings["admins"]: settings["admins"][target_id] = []
-        if perm not in settings["admins"][target_id]: settings["admins"][target_id].append(perm)
-        save_settings(settings)
-        bot.reply_to(message, f"✅ Admin updated for {target_id}")
-    except: bot.reply_to(message, "❌ Use: /addadmin ID permission")
-
-@bot.message_handler(commands=['removeadmin'])
-def remove_admin_command(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        target_id = message.text.split()[1].strip()
-        settings = load_settings()
-        if "admins" in settings and target_id in settings["admins"]:
-            del settings["admins"][target_id]
-            save_settings(settings)
-            bot.reply_to(message, "✅ Admin removed.")
-    except: pass
-
-@bot.message_handler(commands=['adminlist'])
-def view_admin_list(message):
-    if not check_permission(message.from_user.id, "users"): return
-    settings = load_settings()
-    admins = settings.get("admins", {})
-    msg = "👑 <b>BOT ADMINS:</b>\n\n"
-    for u_id, perms in admins.items():
-        msg += f"👤 ID: <code>{u_id}</code>\n🛡 Access: <code>{', '.join(perms)}</code>\n\n"
-    bot.reply_to(message, msg, parse_mode='HTML')
-
-# --- CHANNEL AUTOMATION LOGIC ---
+# --- CHANNEL CHANNELS POST HANDLERS ---
 @bot.channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_channel_post(message):
     if message.chat.id == CONNECTED_CHANNEL:
@@ -192,10 +145,10 @@ def handle_edited_channel_post(message):
                         bot.edit_message_caption(caption=message.caption, chat_id=target["user_id"], message_id=target["msg_id"], parse_mode='HTML')
                 except: pass
 
-# --- CONTROL CONTROL CONTROL ---
+# --- CONTROLS COMMANDS (OWNER ONLY) ---
 @bot.message_handler(commands=['switchmode'])
 def toggle_success_mode(message):
-    if not check_permission(message.from_user.id, "mode"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         opt = message.text.split(maxsplit=1)[1].strip().lower()
         settings = load_settings()
@@ -206,18 +159,18 @@ def toggle_success_mode(message):
 
 @bot.message_handler(commands=['setlink'])
 def change_link(message):
-    if not check_permission(message.from_user.id, "mode"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         new_link = message.text.split(maxsplit=1)[1].strip()
         settings = load_settings()
         settings["reg_link"] = new_link
         save_settings(settings)
-        bot.reply_to(message, "✅ Link Updated.")
+        bot.reply_to(message, "✅ App Link Updated.")
     except: pass
 
 @bot.message_handler(commands=['setsuccessphoto'])
 def change_success_photo(message):
-    if not check_permission(message.from_user.id, "mode"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         new_photo = message.text.split(maxsplit=1)[1].strip()
         settings = load_settings()
@@ -228,7 +181,7 @@ def change_success_photo(message):
 
 @bot.message_handler(commands=['clickstats'])
 def show_click_stats(message):
-    if not check_permission(message.from_user.id, "users"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         with open(CLICK_FILE, "r") as f: clicks = json.load(f)
     except: clicks = {}
@@ -243,12 +196,12 @@ def show_click_stats(message):
 
 @bot.message_handler(commands=['stats'])
 def show_stats(message):
-    if not check_permission(message.from_user.id, "users"): return
+    if message.from_user.id != ADMIN_ID: return
     bot.reply_to(message, f"👥 Users: <code>{len(get_users())}</code>\n🚫 Banned: <code>{len(get_banned_users())}</code>", parse_mode='HTML')
 
 @bot.message_handler(commands=['export'])
 def export_database(message):
-    if not check_permission(message.from_user.id, "users"): return
+    if message.from_user.id != ADMIN_ID: return
     users = get_users()
     with open("backup_users.txt", "w") as f:
         for u_id in users: f.write(f"{u_id}\n")
@@ -258,7 +211,7 @@ def export_database(message):
 
 @bot.message_handler(commands=['maintenance_on'])
 def maintenance_on(message):
-    if not check_permission(message.from_user.id, "settings"): return
+    if message.from_user.id != ADMIN_ID: return
     settings = load_settings()
     settings["maintenance"] = True
     save_settings(settings)
@@ -266,7 +219,7 @@ def maintenance_on(message):
 
 @bot.message_handler(commands=['maintenance_off'])
 def maintenance_off(message):
-    if not check_permission(message.from_user.id, "settings"): return
+    if message.from_user.id != ADMIN_ID: return
     settings = load_settings()
     settings["maintenance"] = False
     save_settings(settings)
@@ -274,7 +227,7 @@ def maintenance_off(message):
 
 @bot.message_handler(commands=['setpin'])
 def toggle_pin(message):
-    if not check_permission(message.from_user.id, "broadcast"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         opt = message.text.split(maxsplit=1)[1].strip().lower()
         settings = load_settings()
@@ -285,7 +238,7 @@ def toggle_pin(message):
 
 @bot.message_handler(commands=['ban'])
 def ban_user_command(message):
-    if not check_permission(message.from_user.id, "users"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         target_id = int(message.text.split()[1])
         ban_user_id(target_id)
@@ -294,7 +247,7 @@ def ban_user_command(message):
 
 @bot.message_handler(commands=['unban'])
 def unban_user_command(message):
-    if not check_permission(message.from_user.id, "users"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         target_id = int(message.text.split()[1])
         unban_user_id(target_id)
@@ -303,7 +256,7 @@ def unban_user_command(message):
 
 @bot.message_handler(commands=['addbutton'])
 def add_button_command(message):
-    if not check_permission(message.from_user.id, "buttons"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         content = message.text.split(maxsplit=1)[1]
         parts = content.split(maxsplit=1)
@@ -323,7 +276,7 @@ def add_button_command(message):
 
 @bot.message_handler(commands=['delbutton'])
 def del_button_command(message):
-    if not check_permission(message.from_user.id, "buttons"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         btn_index = int(message.text.split()[1]) - 1
         settings = load_settings()
@@ -337,7 +290,7 @@ def del_button_command(message):
 
 @bot.message_handler(commands=['seterrortext'])
 def change_error_text_command(message):
-    if not check_permission(message.from_user.id, "settings"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         new_err = message.text.split(maxsplit=1)[1]
         settings = load_settings()
@@ -348,7 +301,7 @@ def change_error_text_command(message):
 
 @bot.message_handler(commands=['setprocesstext'])
 def change_process_text_command(message):
-    if not check_permission(message.from_user.id, "settings"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         new_proc = message.text.split(maxsplit=1)[1]
         settings = load_settings()
@@ -359,7 +312,7 @@ def change_process_text_command(message):
 
 @bot.message_handler(commands=['settext'])
 def change_text(message):
-    if not check_permission(message.from_user.id, "settings"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         new_text = message.text.split(maxsplit=1)[1]
         settings = load_settings()
@@ -370,7 +323,7 @@ def change_text(message):
 
 @bot.message_handler(commands=['setphoto'])
 def change_photo(message):
-    if not check_permission(message.from_user.id, "settings"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         new_photo = message.text.split(maxsplit=1)[1]
         settings = load_settings()
@@ -381,7 +334,7 @@ def change_photo(message):
 
 @bot.message_handler(commands=['setcode'])
 def change_code(message):
-    if not check_permission(message.from_user.id, "settings"): return
+    if message.from_user.id != ADMIN_ID: return
     try:
         new_code = message.text.split(maxsplit=1)[1].strip()
         settings = load_settings()
@@ -392,13 +345,9 @@ def change_code(message):
 
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
-    if not check_permission(message.from_user.id, "broadcast") and not check_permission(message.from_user.id, "buttons") and not check_permission(message.from_user.id, "settings") and not check_permission(message.from_user.id, "users") and not check_permission(message.from_user.id, "mode"): return
+    if message.from_user.id != ADMIN_ID: return
     panel_text = (
-        "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
-        "👑 <b>Admin Master Config:</b>\n"
-        "➕ <code>/addadmin [ID] [permission]</code>\n"
-        "➖ <code>/removeadmin [ID]</code>\n"
-        "📋 <code>/adminlist</code>\n\n"
+        "⚙️ <b>ADMIN CONTROL PANEL (OWNER ONLY)</b>\n\n"
         "📊 <code>/stats</code> | 📈 <code>/clickstats</code>\n"
         "💾 <code>/export</code> | 🔴 <code>/maintenance_on</code>\n"
         "🟢 <code>/maintenance_off</code> | 📌 <code>/setpin [on/off]</code>\n"
@@ -425,22 +374,22 @@ def handle_start(message):
 @bot.callback_query_handler(func=lambda call: call.data == "cancel_broadcast")
 def cancel_broadcast_callback(call):
     global cancel_broadcast_flag
-    if check_permission(call.from_user.id, "broadcast"):
+    if call.from_user.id == ADMIN_ID:
         cancel_broadcast_flag = True
         bot.answer_callback_query(call.id, "Halting transmission...")
         bot.edit_message_text("⚠️ <b>Broadcast Canceled!</b>", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode='HTML')
 
-# --- SMART BROADCAST DISPATCH SYSTEM ---
+# --- SMART BROADCAST ENGINE ---
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_messages(message):
     global cancel_broadcast_flag
     users = get_users() 
     settings = load_settings()
     if message.from_user.id in get_banned_users(): return
-    if (settings["maintenance"] and not check_permission(message.from_user.id, "settings")):
+    if settings["maintenance"] and message.from_user.id != ADMIN_ID:
         bot.send_message(message.chat.id, "🛠 System Under Maintenance.")
         return
-    if check_permission(message.from_user.id, "broadcast"):
+    if message.from_user.id == ADMIN_ID:
         if message.text and message.text.startswith('/'): return
         text_to_scan = message.text if message.text else (message.caption if message.caption else "")
         urls = re.findall(r'(https?://\S+)', text_to_scan)
@@ -483,4 +432,54 @@ def handle_messages(message):
         save_settings(settings)
         bot.send_message(message.chat.id, f"📢 <b>REPORT:</b>\n\n✅ Sent: {count}\n❌ Blocked: {blocked_count}", parse_mode='HTML')
     else:
-        if message.content_type == 'text' and messa
+        if message.content_type == 'text' and message.text == "/start": send_welcome(message)
+
+def send_welcome(message):
+    save_user(message.chat.id)
+    settings = load_settings()
+    buttons = settings.get("dynamic_buttons", [])
+    markup = types.InlineKeyboardMarkup()
+    row_btns = []
+    for i, btn in enumerate(buttons):
+        row_btns.append(types.InlineKeyboardButton(btn["text"], callback_data=f"track_click_{i}"))
+        if len(row_btns) == 2:
+            markup.row(row_btns[0], row_btns[1])
+            row_btns = []
+    if row_btns: markup.row(row_btns[0])
+    markup.row(types.InlineKeyboardButton("🎉 Get My Free Code", callback_data="claim_code"))
+    try: bot.send_photo(message.chat.id, settings.get("image"), caption=settings.get("text"), reply_markup=markup, parse_mode='HTML')
+    except: bot.send_photo(message.chat.id, "https://t.me/TG_Looters/3", caption=settings.get("text"), reply_markup=markup, parse_mode='HTML')
+
+@bot.callback_query_handler(func=lambda call: call.data != "cancel_broadcast")
+def callback_query(call):
+    settings = load_settings()
+    user_id = call.message.chat.id
+    try:
+        with open(CLICK_FILE, "r") as f: clicks = json.load(f)
+    except: clicks = {}
+    
+    if call.data == "claim_code":
+        clicks["claim_btn_click"] = clicks.get("claim_btn_click", 0) + 1
+        with open(CLICK_FILE, "w") as f: json.dump(clicks, f)
+        bot.answer_callback_query(call.id, "⏳ Verifying...")
+        proc_msg = bot.send_message(user_id, settings.get("process_text"), parse_mode='HTML')
+        time.sleep(5)
+        if settings.get("success_mode", False):
+            success_markup = types.InlineKeyboardMarkup()
+            success_markup.add(types.InlineKeyboardButton("🔗 Register/Claim Button", callback_data="click_success_app"))
+            success_text = f"✅ <b>VERIFICATION SUCCESSFUL!</b>\n\n🎁 <b>Code: {settings.get('code')}</b>\n\n👇 <b>Click below to claim:</b>"
+            try:
+                bot.delete_message(chat_id=user_id, message_id=proc_msg.message_id)
+                bot.send_photo(chat_id=user_id, photo=settings.get("success_image"), caption=success_text, reply_markup=success_markup, parse_mode='HTML')
+            except: pass
+        else:
+            try: bot.edit_message_text(text=settings.get("error_text"), chat_id=user_id, message_id=proc_msg.message_id, parse_mode='HTML')
+            except: pass
+    elif call.data == "click_success_app":
+        clicks["app_btn_click"] = clicks.get("app_btn_click", 0) + 1
+        with open(CLICK_FILE, "w") as f: json.dump(clicks, f)
+        bot.answer_callback_query(call.id, url=settings.get("reg_link"))
+    elif call.data.startswith("click_bc_"):
+        msg_id_str = call.data.split("_")[2]
+        click_key = f"bc_msg_{msg_id_str}"
+        clicks[click_
