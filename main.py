@@ -23,6 +23,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
+# Environment variable se token uthayega taaki 401/404 Error na aaye
 API_TOKEN = os.environ.get('BOT_TOKEN', '').strip()
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632
@@ -192,7 +193,7 @@ def change_link(message):
         settings = load_settings()
         settings["reg_link"] = new_link
         save_settings(settings)
-        bot.reply_to(message, f"✅ <b>Link updated!</b>", parse_mode='HTML')
+        bot.reply_to(message, f"✅ <b>Link update ho gaya!</b>", parse_mode='HTML')
     except: pass
 
 @bot.message_handler(commands=['setsuccessphoto'])
@@ -203,7 +204,7 @@ def change_success_photo(message):
         settings = load_settings()
         settings["success_image"] = new_photo
         save_settings(settings)
-        bot.reply_to(message, f"✅ <b>Photo Link Updated!</b>", parse_mode='HTML')
+        bot.reply_to(message, f"✅ <b>Success Photo Link badal gayi!</b>", parse_mode='HTML')
     except: pass
 
 @bot.message_handler(commands=['clickstats'])
@@ -224,7 +225,7 @@ def show_click_stats(message):
 @bot.message_handler(commands=['stats'])
 def show_stats(message):
     if message.from_user.id != ADMIN_ID: return
-    bot.reply_to(message, f"👥 Total Users: <code>{len(get_users())}</code>\n🚫 Banned: <code>{len(get_banned_users())}</code>", parse_mode='HTML')
+    bot.reply_to(message, f"📊 <b>Bot Stats:</b>\n👥 Total Users: <code>{len(get_users())}</code>\n🚫 Banned: <code>{len(get_banned_users())}</code>", parse_mode='HTML')
 
 @bot.message_handler(commands=['export'])
 def export_database(message):
@@ -269,7 +270,7 @@ def ban_user_command(message):
     try:
         target_id = int(message.text.split()[1])
         ban_user_id(target_id)
-        bot.reply_to(message, f"✅ User <code>{target_id}</code> BAN!", parse_mode='HTML')
+        bot.reply_to(message, f"✅ User <code>{target_id}</code> BAN ho gaya!", parse_mode='HTML')
     except: pass
 
 @bot.message_handler(commands=['unban'])
@@ -278,7 +279,7 @@ def unban_user_command(message):
     try:
         target_id = int(message.text.split()[1])
         unban_user_id(target_id)
-        bot.reply_to(message, f"✅ User <code>{target_id}</code> UNBAN!", parse_mode='HTML')
+        bot.reply_to(message, f"✅ User <code>{target_id}</code> UNBAN ho gaya!", parse_mode='HTML')
     except: pass
 
 @bot.message_handler(commands=['addbutton'])
@@ -395,9 +396,7 @@ def admin_panel(message):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    if message.from_user.id in get_banned_users():
-        bot.send_message(message.chat.id, "❌ Banned.")
-        return
+    if message.from_user.id in get_banned_users(): return
     send_welcome(message)
 
 # --- BROADCAST CANCEL HANDLER ---
@@ -417,10 +416,7 @@ def handle_messages(message):
     settings = load_settings()
 
     if message.from_user.id in get_banned_users(): return
-
-    if settings["maintenance"] and message.from_user.id != ADMIN_ID:
-        bot.send_message(message.chat.id, "🛠 Bot Maintenance.")
-        return
+    if settings["maintenance"] and message.from_user.id != ADMIN_ID: return
 
     if message.from_user.id == ADMIN_ID:
         if message.text and message.text.startswith('/'): return
@@ -505,4 +501,4 @@ def callback_query(call):
             success_markup.add(types.InlineKeyboardButton("🔗 Register/Claim Button", callback_data="click_success_app"))
             success_text = f"✅ <b>VERIFICATION SUCCESSFUL!</b>\n\n🎁 <b>Code: {settings.get('code')}</b>\n\n👇 <b>Click below to claim:</b>"
             try:
-                bot.delete_message(chat_id=user_id, m
+                bot.delete_message(chat_id=user_id, message_id=pr
