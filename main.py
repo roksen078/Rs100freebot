@@ -7,12 +7,12 @@ import time
 from flask import Flask
 from threading import Thread
 
-# --- FLASK SERVER SYSTEM ---
+# --- MINIMAL WEB SERVER FOR RENDER ---
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot is alive and running safely!"
+    return "Bot is active"
 
 def run():
     port = int(os.environ.get('PORT', 5000))
@@ -23,9 +23,9 @@ def keep_alive():
     t.daemon = True
     t.start()
 
-# --- BOT SETTINGS FROM ENVIRONMENT ---
+# --- INITIALIZE SYSTEM SETTINGS ---
 API_TOKEN = os.environ.get('BOT_TOKEN', '').strip()
-ADMIN_ID = 1908832842  # Main Owner ID
+ADMIN_ID = 1908832842  # Main Supreme Owner ID
 CONNECTED_CHANNEL = -1002145879632
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -36,16 +36,15 @@ MSG_LOG_FILE = "msg_log.json"
 BAN_FILE = "banned_users.json"
 CLICK_FILE = "clicks.json"
 
-# --- SYSTEM FILES SAFE GENERATOR ---
-def init_json_file(filename, default_value):
-    if not os.path.exists(filename) or os.stat(filename).st_size == 0:
-        with open(filename, "w") as f:
-            json.dump(default_value, f)
+def init_file(name, default):
+    if not os.path.exists(name) or os.stat(name).st_size == 0:
+        with open(name, "w") as f:
+            json.dump(default, f)
 
-init_json_file(DB_FILE, [])
-init_json_file(MSG_LOG_FILE, {})
-init_json_file(BAN_FILE, [])
-init_json_file(CLICK_FILE, {})
+init_file(DB_FILE, [])
+init_file(MSG_LOG_FILE, {})
+init_file(BAN_FILE, [])
+init_file(CLICK_FILE, {})
 
 cancel_broadcast_flag = False
 
@@ -73,20 +72,17 @@ def load_settings():
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r") as f:
-                current_data = json.load(f)
-                for key, val in default.items():
-                    if key not in current_data:
-                        current_data[key] = val
-                return current_data
-        except:
-            pass
+                data = json.load(f)
+                for k, v in default.items():
+                    if k not in data: data[k] = v
+                return data
+        except: pass
     with open(SETTINGS_FILE, "w") as f:
         json.dump(default, f)
     return default
 
 def save_settings(data):
-    with open(SETTINGS_FILE, "w") as f:
-        json.dump(data, f)
+    with open(SETTINGS_FILE, "w") as f: json.dump(data, f)
 
 def get_users():
     try:
@@ -95,12 +91,6 @@ def get_users():
 
 def save_users_list(users):
     with open(DB_FILE, "w") as f: json.dump(users, f)
-
-def save_user(user_id):
-    users = get_users()
-    if user_id not in users:
-        users.append(user_id)
-        save_users_list(users)
 
 def get_banned_users():
     try:
@@ -123,31 +113,15 @@ def unban_user_id(user_id):
         banned.remove(user_id)
         with open(BAN_FILE, "w") as f: json.dump(banned, f)
 
-def load_msg_log():
-    try:
-        with open(MSG_LOG_FILE, "r") as f: return json.load(f)
-    except: return {}
-
-def save_msg_log(data):
-    with open(MSG_LOG_FILE, "w") as f: json.dump(data, f)
-
-def load_clicks():
-    try:
-        with open(CLICK_FILE, "r") as f: return json.load(f)
-    except: return {}
-
-def save_clicks(data):
-    with open(CLICK_FILE, "w") as f: json.dump(data, f)
-
 def check_permission(user_id, required_perm):
     settings = load_settings()
     admins = settings.get("admins", {})
-    u_id_str = str(user_id)
-    if u_id_str in admins:
-        perms = admins[u_id_str]
-        return "all" in perms or required_perm in perms
+    uid = str(user_id)
+    if uid in admins:
+        return "all" in admins[uid] or required_perm in admins[uid]
     return False
 
+# --- DYNAMIC ADMIN MANAGEMENT ---
 @bot.message_handler(commands=['addadmin'])
 def add_admin_command(message):
     if message.from_user.id != ADMIN_ID: return
@@ -155,25 +129,19 @@ def add_admin_command(message):
         parts = message.text.split()
         target_id = parts[1].strip()
         perm = parts[2].strip().lower()
-        valid_perms = ["broadcast", "buttons", "settings", "users", "mode", "all"]
-        if perm not in valid_perms:
-            bot.reply_to(message, "❌ Invalid permission!")
-            return
         settings = load_settings()
         if "admins" not in settings: settings["admins"] = {}
         if target_id not in settings["admins"]: settings["admins"][target_id] = []
-        if perm not in settings["admins"][target_id]:
-            settings["admins"][target_id].append(perm)
+        if perm not in settings["admins"][target_id]: settings["admins"][target_id].append(perm)
         save_settings(settings)
-        bot.reply_to(message, f"✅ Admin Updated.", parse_mode='HTML')
-    except: bot.reply_to(message, "❌ Format: `/addadmin [ID] [permission]`")
+        bot.reply_to(message, f"✅ Admin updated for {target_id}")
+    except: bot.reply_to(message, "❌ Use: /addadmin ID permission")
 
 @bot.message_handler(commands=['removeadmin'])
 def remove_admin_command(message):
     if message.from_user.id != ADMIN_ID: return
     try:
         target_id = message.text.split()[1].strip()
-        if target_id == str(ADMIN_ID): return
         settings = load_settings()
         if "admins" in settings and target_id in settings["admins"]:
             del settings["admins"][target_id]
@@ -191,6 +159,7 @@ def view_admin_list(message):
         msg += f"👤 ID: <code>{u_id}</code>\n🛡 Access: <code>{', '.join(perms)}</code>\n\n"
     bot.reply_to(message, msg, parse_mode='HTML')
 
+# --- CHANNEL AUTOMATION LOGIC ---
 @bot.channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_channel_post(message):
     if message.chat.id == CONNECTED_CHANNEL:
@@ -201,14 +170,18 @@ def handle_channel_post(message):
                 sent_msg = bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
                 sent_msg_ids.append({"user_id": user_id, "msg_id": sent_msg.message_id})
             except: pass
-        logs = load_msg_log()
+        try:
+            with open(MSG_LOG_FILE, "r") as f: logs = json.load(f)
+        except: logs = {}
         logs[str(message.message_id)] = sent_msg_ids
-        save_msg_log(logs)
+        with open(MSG_LOG_FILE, "w") as f: json.dump(logs, f)
 
 @bot.edited_channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_edited_channel_post(message):
     if message.chat.id == CONNECTED_CHANNEL:
-        logs = load_msg_log()
+        try:
+            with open(MSG_LOG_FILE, "r") as f: logs = json.load(f)
+        except: return
         ch_msg_id = str(message.message_id)
         if ch_msg_id in logs:
             for target in logs[ch_msg_id]:
@@ -219,6 +192,7 @@ def handle_edited_channel_post(message):
                         bot.edit_message_caption(caption=message.caption, chat_id=target["user_id"], message_id=target["msg_id"], parse_mode='HTML')
                 except: pass
 
+# --- CONTROL CONTROL CONTROL ---
 @bot.message_handler(commands=['switchmode'])
 def toggle_success_mode(message):
     if not check_permission(message.from_user.id, "mode"): return
@@ -227,7 +201,7 @@ def toggle_success_mode(message):
         settings = load_settings()
         settings["success_mode"] = (opt == 'on')
         save_settings(settings)
-        bot.reply_to(message, f"🟢 <b>Success Mode: {'ON' if opt=='on' else 'OFF'}</b>", parse_mode='HTML')
+        bot.reply_to(message, f"🟢 Success Mode: {'ON' if opt=='on' else 'OFF'}")
     except: pass
 
 @bot.message_handler(commands=['setlink'])
@@ -238,7 +212,7 @@ def change_link(message):
         settings = load_settings()
         settings["reg_link"] = new_link
         save_settings(settings)
-        bot.reply_to(message, f"🔗 Link Set: <code>{new_link}</code>", parse_mode='HTML')
+        bot.reply_to(message, "✅ Link Updated.")
     except: pass
 
 @bot.message_handler(commands=['setsuccessphoto'])
@@ -249,24 +223,22 @@ def change_success_photo(message):
         settings = load_settings()
         settings["success_image"] = new_photo
         save_settings(settings)
-        bot.reply_to(message, "✅ Success Photo Updated!", parse_mode='HTML')
+        bot.reply_to(message, "✅ Success Photo Saved.")
     except: pass
 
 @bot.message_handler(commands=['clickstats'])
 def show_click_stats(message):
     if not check_permission(message.from_user.id, "users"): return
-    clicks = load_clicks()
+    try:
+        with open(CLICK_FILE, "r") as f: clicks = json.load(f)
+    except: clicks = {}
     settings = load_settings()
     buttons = settings.get("dynamic_buttons", [])
-    report = "📊 <b>LIVE BUTTON CLICKS REPORT</b>\n\n"
+    report = "📊 <b>LIVE REPORT</b>\n\n"
     for i, btn in enumerate(buttons):
         report += f"🔘 {btn['text']}: <code>{clicks.get(f'btn_{i}', 0)} Clicks</code>\n"
     report += f"\n🎉 Claim Button: <code>{clicks.get('claim_btn_click', 0)}</code>\n"
-    report += f"🔗 Success App Button: <code>{clicks.get('app_btn_click', 0)}</code>\n\n📢 <b>BROADCAST POSTS:</b>\n"
-    bc_keys = [k for k in clicks.keys() if k.startswith("bc_msg_")]
-    if not bc_keys: report += "<i>No clicks yet.</i>"
-    else:
-        for key in bc_keys: report += f"👉 ID #{key.split('_')[2]}: <code>{clicks[key]} Clicks</code>\n"
+    report += f"🔗 Success App Button: <code>{clicks.get('app_btn_click', 0)}</code>\n"
     bot.reply_to(message, report, parse_mode='HTML')
 
 @bot.message_handler(commands=['stats'])
@@ -317,7 +289,7 @@ def ban_user_command(message):
     try:
         target_id = int(message.text.split()[1])
         ban_user_id(target_id)
-        bot.reply_to(message, f"✅ User {target_id} Banned.", parse_mode='HTML')
+        bot.reply_to(message, f"✅ User {target_id} Banned.")
     except: pass
 
 @bot.message_handler(commands=['unban'])
@@ -326,7 +298,7 @@ def unban_user_command(message):
     try:
         target_id = int(message.text.split()[1])
         unban_user_id(target_id)
-        bot.reply_to(message, f"✅ User {target_id} Unbanned.", parse_mode='HTML')
+        bot.reply_to(message, f"✅ User {target_id} Unbanned.")
     except: pass
 
 @bot.message_handler(commands=['addbutton'])
@@ -357,10 +329,10 @@ def del_button_command(message):
         settings = load_settings()
         buttons = settings.get("dynamic_buttons", [])
         if 0 <= btn_index < len(buttons):
-            removed = buttons.pop(btn_index)
+            buttons.pop(btn_index)
             settings["dynamic_buttons"] = buttons
             save_settings(settings)
-            bot.reply_to(message, f"✅ Button '{removed['text']}' deleted.")
+            bot.reply_to(message, "✅ Button Deleted.")
     except: pass
 
 @bot.message_handler(commands=['seterrortext'])
@@ -458,6 +430,7 @@ def cancel_broadcast_callback(call):
         bot.answer_callback_query(call.id, "Halting transmission...")
         bot.edit_message_text("⚠️ <b>Broadcast Canceled!</b>", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode='HTML')
 
+# --- SMART BROADCAST DISPATCH SYSTEM ---
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_messages(message):
     global cancel_broadcast_flag
@@ -465,7 +438,7 @@ def handle_messages(message):
     settings = load_settings()
     if message.from_user.id in get_banned_users(): return
     if (settings["maintenance"] and not check_permission(message.from_user.id, "settings")):
-        bot.send_message(message.chat.id, "🛠 System Under Routine Maintenance.")
+        bot.send_message(message.chat.id, "🛠 System Under Maintenance.")
         return
     if check_permission(message.from_user.id, "broadcast"):
         if message.text and message.text.startswith('/'): return
@@ -481,7 +454,7 @@ def handle_messages(message):
         cancel_markup = types.InlineKeyboardMarkup()
         cancel_markup.add(types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast"))
         bot.send_message(message.chat.id, f"🚀 <b>Broadcast Started... (ID: #{msg_id_str})</b>", reply_markup=cancel_markup, parse_mode='HTML')
-        count, blocked_count, failed_count = 0, 0, 0
+        count, blocked_count = 0, 0
         cancel_broadcast_flag = False
         last_pinned = settings.get("last_pinned_msgs", {})
         for user_id in list(users):
@@ -491,4 +464,23 @@ def handle_messages(message):
                     bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
                 else:
                     sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
-                    if 
+                    if settings.get("auto_pin", True):
+                        if str(user_id) in last_pinned:
+                            try: bot.unpin_chat_message(chat_id=user_id, message_id=last_pinned[str(user_id)])
+                            except: pass
+                        try:
+                            bot.pin_chat_message(chat_id=user_id, message_id=sent_msg.message_id, disable_notification=True)
+                            last_pinned[str(user_id)] = sent_msg.message_id
+                        except: pass
+                count += 1
+            except telebot.api_helper.ApiTelegramException as ex:
+                if ex.error_code == 403:
+                    blocked_count += 1
+                    if user_id in users: users.remove(user_id)
+            except: pass
+        save_users_list(users)
+        settings["last_pinned_msgs"] = last_pinned
+        save_settings(settings)
+        bot.send_message(message.chat.id, f"📢 <b>REPORT:</b>\n\n✅ Sent: {count}\n❌ Blocked: {blocked_count}", parse_mode='HTML')
+    else:
+        if message.content_type == 'text' and messa
