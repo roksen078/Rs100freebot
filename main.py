@@ -442,7 +442,11 @@ def handle_start(message):
     if message.from_user.id in banned:
         bot.send_message(message.chat.id, "❌ Aapko is bot se permanent BAN kar diya gaya hai.")
         return
-    send_welcome(message)
+    # Note: Ensure you define send_welcome(message) elsewhere or handle start logic here.
+    try:
+        settings = load_settings()
+        bot.send_message(message.chat.id, settings["text"], parse_mode='HTML')
+    except: pass
 
 # --- BROADCAST CANCEL HANDLER ---
 @bot.callback_query_handler(func=lambda call: call.data == "cancel_broadcast")
@@ -507,9 +511,4 @@ def handle_messages(message):
                 if message.forward_from_chat or message.forward_from or message.forward_sender_name:
                     bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
                 else:
-                    sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
-                    
-                    if settings.get("auto_pin", True):
-                        if str(user_id) in last_pinned:
-                            try: 
-           
+                    sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.messag
