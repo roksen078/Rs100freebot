@@ -7,13 +7,6 @@ import time
 from flask import Flask
 from threading import Thread
 
-# --- BOT SETTINGS (SABSE PEHLE) ---
-API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM"  # <--- Is quotes ke andar apna sahi token dalein
-ADMIN_ID = 1908832842
-CONNECTED_CHANNEL = -1002145879632
-
-bot = telebot.TeleBot(API_TOKEN)
-
 # --- RENDER PORT FIX ---
 app = Flask('')
 
@@ -28,6 +21,12 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
+# --- BOT SETTINGS ---
+API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM" # Yahan apna token dalein
+ADMIN_ID = 1908832842
+CONNECTED_CHANNEL = -1002145879632
+
+bot = telebot.TeleBot(API_TOKEN)
 DB_FILE = "users.json"
 SETTINGS_FILE = "settings.json"
 MSG_LOG_FILE = "msg_log.json"
@@ -216,6 +215,8 @@ def show_click_stats(message):
     buttons = settings.get("dynamic_buttons", [])
     
     report = "📊 <b>LIVE BUTTON CLICKS REPORT</b>\n\n"
+    
+    # 1. Welcome Screen Buttons Clicks
     for i, btn in enumerate(buttons):
         btn_id = f"btn_{i}"
         count = clicks.get(btn_id, 0)
@@ -223,8 +224,11 @@ def show_click_stats(message):
         
     claim_count = clicks.get("claim_btn_click", 0)
     app_btn_count = clicks.get("app_btn_click", 0)
+    
     report += f"🎉 Claim Button Clicks: <code>{claim_count}</code>\n"
     report += f"🔗 Success App Button Clicks: <code>{app_btn_count}</code>\n\n"
+    
+    # 2. Specific Broadcast Links Clicks (Message ID Wise)
     report += "📢 <b>BROADCAST MESSAGES LINKS REPORT:</b>\n"
     broadcast_keys = [k for k in clicks.keys() if k.startswith("bc_msg_")]
     
@@ -317,6 +321,7 @@ def add_button_command(message):
 
         settings = load_settings()
         buttons = settings.get("dynamic_buttons", [])
+
         new_btn = {"text": btn_name, "url": btn_url}
         if 0 <= btn_index < len(buttons):
             buttons[btn_index] = new_btn
@@ -412,7 +417,7 @@ def change_code(message):
 def admin_panel(message):
     if message.from_user.id != ADMIN_ID: return
     panel_text = (
-        "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
+        "⚙️ <b>ADMIN CONTROL PANEL (OWNER ONLY)</b>\n\n"
         "📊 <code>/stats</code> | 📈 <code>/clickstats</code>\n"
         "💾 <code>/export</code> | 🔴 <code>/maintenance_on</code>\n"
         "🟢 <code>/maintenance_off</code> | 📌 <code>/setpin [on/off]</code>\n"
@@ -433,15 +438,10 @@ def admin_panel(message):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    banned = get_banned_users()
-    if message.from_user.id in banned:
+    if message.from_user.id in get_banned_users():
         bot.send_message(message.chat.id, "❌ Aapko is bot se permanent BAN kar diya gaya hai.")
         return
-    save_user(message.from_user.id)
-    try:
-        settings = load_settings()
-        bot.send_message(message.chat.id, settings["text"], parse_mode='HTML')
-    except: pass
+    send_welcome(message)
 
 # --- BROADCAST CANCEL HANDLER ---
 @bot.callback_query_handler(func=lambda call: call.data == "cancel_broadcast")
@@ -452,7 +452,7 @@ def cancel_broadcast_callback(call):
         bot.answer_callback_query(call.id, "Stopping process...")
         bot.edit_message_text("⚠️ <b>Broadcast Canceled by Admin!</b>", chat_id=ADMIN_ID, message_id=call.message.message_id, parse_mode='HTML')
 
-# --- SMART BROADCAST HANDLER ---
+# --- SMART BROADCAST ENGINE ---
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_messages(message):
     global cancel_broadcast_flag
@@ -461,71 +461,111 @@ def handle_messages(message):
     banned = get_banned_users()
 
     if message.from_user.id in banned: return
-
-    if (settings["maintenance"] and message.from_user.id != ADMIN_ID):
-        bot.send_message(message.chat.id, "🛠 Bot Maintenance Mode Me Hai.")
+    if settings["maintenance"] and message.from_user.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "🛠 System Under Maintenance.")
         return
-
     if message.from_user.id == ADMIN_ID:
         if message.text and message.text.startswith('/'): return
-
         text_to_scan = message.text if message.text else (message.caption if message.caption else "")
         urls = re.findall(r'(https?://\S+)', text_to_scan)
-        
         msg_id_str = str(message.message_id)
         markup = types.InlineKeyboardMarkup()
-        register_btn = types.InlineKeyboardButton("Register Link", callback_data=f"click_bc_{msg_id_str}")
-        markup.add(register_btn)
-        
+        markup.add(types.InlineKeyboardButton("Register Link", callback_data=f"click_bc_{msg_id_str}"))
         if urls:
             if "broadcast_links" not in settings: settings["broadcast_links"] = {}
             settings["broadcast_links"][msg_id_str] = urls[0]
             save_settings(settings)
-
         cancel_markup = types.InlineKeyboardMarkup()
-        cancel_btn = types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast")
-        cancel_markup.add(cancel_btn)
-
-        bot.send_message(ADMIN_ID, f"🚀 <b>{len(users)} users ko broadcast shuru... (Message ID: #{msg_id_str})</b>", reply_markup=cancel_markup, parse_mode='HTML')
-        
-        count = 0
-        failed_count = 0
+        cancel_markup.add(types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast"))
+        bot.send_message(ADMIN_ID, f"🚀 <b>Broadcast started... (ID: #{msg_id_str})</b>", reply_markup=cancel_markup, parse_mode='HTML')
+        count, blocked_count = 0, 0
         cancel_broadcast_flag = False
-        
-        active_users = list(users)
         last_pinned = settings.get("last_pinned_msgs", {})
-
-        for user_id in active_users:
+        for user_id in list(users):
             if cancel_broadcast_flag: break
             try:
                 if message.forward_from_chat or message.forward_from or message.forward_sender_name:
                     bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
                 else:
                     sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
-                    
                     if settings.get("auto_pin", True):
                         if str(user_id) in last_pinned:
-                            try: 
-                                bot.unpin_chat_message(chat_id=user_id, message_id=last_pinned[str(user_id)])
+                            try: bot.unpin_chat_message(chat_id=user_id, message_id=last_pinned[str(user_id)])
                             except: pass
                         try:
-                            bot.pin_chat_message(chat_id=user_id, message_id=sent_msg.message_id)
+                            bot.pin_chat_message(chat_id=user_id, message_id=sent_msg.message_id, disable_notification=True)
                             last_pinned[str(user_id)] = sent_msg.message_id
                         except: pass
                 count += 1
-            except:
-                failed_count += 1
-        
+                    except telebot.api_helper.ApiTelegramException as ex:
+            if ex.error_code == 403:
+                blocked_count += 1
+                if user_id in users: users.remove(user_id)
+        except: pass
+        save_users_list(users)
         settings["last_pinned_msgs"] = last_pinned
         save_settings(settings)
-        bot.send_message(ADMIN_ID, f"📢 <b>Broadcast Completed!</b>\n\n✅ Sent: <code>{count}</code>\n❌ Failed/Blocked: <code>{failed_count}</code>", parse_mode='HTML')
+        bot.send_message(ADMIN_ID, f"📢 <b>Report:</b>\n✅ Sent: {count}\n❌ Blocked: {blocked_count}", parse_mode='HTML')
+    else:
+        if message.content_type == 'text' and message.text == "/start": send_welcome(message)
 
-# --- WEB SERVER & POLLING START ---
-if __name__ == '__main__':
+def send_welcome(message):
+    save_user(message.chat.id)
+    settings = load_settings()
+    buttons = settings.get("dynamic_buttons", [])
+    markup = types.InlineKeyboardMarkup()
+    row_btns = []
+    for i, btn in enumerate(buttons):
+        row_btns.append(types.InlineKeyboardButton(btn["text"], callback_data=f"track_click_{i}"))
+        if len(row_btns) == 2:
+            markup.row(row_btns[0], row_btns[1])
+            row_btns = []
+    if row_btns: markup.row(row_btns[0])
+    markup.row(types.InlineKeyboardButton("🎉 Get My Free Code", callback_data="claim_code"))
+    try: bot.send_photo(message.chat.id, settings.get("image"), caption=settings.get("text"), reply_markup=markup, parse_mode='HTML')
+    except: bot.send_photo(message.chat.id, "https://t.me/TG_Looters/3", caption=settings.get("text"), reply_markup=markup, parse_mode='HTML')
+
+@bot.callback_query_handler(func=lambda call: call.data != "cancel_broadcast")
+def callback_query(call):
+    settings = load_settings()
+    clicks = load_clicks()
+    user_id = call.message.chat.id
+    if call.data == "claim_code":
+        clicks["claim_btn_click"] = clicks.get("claim_btn_click", 0) + 1
+        save_clicks(clicks)
+        bot.answer_callback_query(call.id, "⏳ Verifying...")
+        proc_msg = bot.send_message(user_id, settings.get("process_text"), parse_mode='HTML')
+        time.sleep(5)
+        if settings.get("success_mode", False):
+            success_markup = types.InlineKeyboardMarkup()
+            success_markup.add(types.InlineKeyboardButton("🔗 Register/Claim Button", callback_data="click_success_app"))
+            success_text = f"✅ <b>VERIFICATION SUCCESSFUL!</b>\n\n🎁 <b>Code: {settings.get('code')}</b>\n\n👇 <b>Click below to claim:</b>"
+            try:
+                bot.delete_message(chat_id=user_id, message_id=proc_msg.message_id)
+                bot.send_photo(chat_id=user_id, photo=settings.get("success_image"), caption=success_text, reply_markup=success_markup, parse_mode='HTML')
+            except: pass
+        else:
+            try: bot.edit_message_text(text=settings.get("error_text"), chat_id=user_id, message_id=proc_msg.message_id, parse_mode='HTML')
+            except: pass
+    elif call.data == "click_success_app":
+        clicks["app_btn_click"] = clicks.get("app_btn_click", 0) + 1
+        save_clicks(clicks)
+        bot.answer_callback_query(call.id, url=settings.get("reg_link"))
+    elif call.data.startswith("click_bc_"):
+        msg_id_str = call.data.split("_")[2]
+        click_key = f"bc_msg_{msg_id_str}"
+        clicks[click_key] = clicks.get(click_key, 0) + 1
+        save_clicks(clicks)
+        bc_links = settings.get("broadcast_links", {})
+        bot.answer_callback_query(call.id, url=bc_links.get(msg_id_str, settings.get("reg_link")))
+    elif call.data.startswith("track_click_"):
+        btn_index = int(call.data.split("_")[2])
+        buttons = settings.get("dynamic_buttons", [])
+        if 0 <= btn_index < len(buttons):
+            clicks[f"btn_{btn_index}"] = clicks.get(f"btn_{btn_index}", 0) + 1
+            save_clicks(clicks)
+            bot.answer_callback_query(call.id, url=buttons[btn_index]["url"])
+
+if __name__ == "__main__":
     keep_alive()
-    print("Bot is polling...")
-    try:
-        bot.infinity_polling(timeout=20, long_polling_timeout=20)
-    except Exception as e:
-        print(f"Error structure down: {e}")
-        
+    bot.infinity_polling()
