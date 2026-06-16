@@ -7,6 +7,13 @@ import time
 from flask import Flask
 from threading import Thread
 
+# --- BOT SETTINGS (SABSE PEHLE) ---
+API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM"  # <--- Is quotes ke andar hi apna token daalein
+ADMIN_ID = 1908832842
+CONNECTED_CHANNEL = -1002145879632
+
+bot = telebot.TeleBot(API_TOKEN)
+
 # --- RENDER PORT FIX ---
 app = Flask('')
 
@@ -21,12 +28,6 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM"  # Yahan apna token dalein
-ADMIN_ID = 1908832842
-CONNECTED_CHANNEL = -1002145879632
-
-bot = telebot.TeleBot(API_TOKEN)
 DB_FILE = "users.json"
 SETTINGS_FILE = "settings.json"
 MSG_LOG_FILE = "msg_log.json"
@@ -215,8 +216,6 @@ def show_click_stats(message):
     buttons = settings.get("dynamic_buttons", [])
     
     report = "📊 <b>LIVE BUTTON CLICKS REPORT</b>\n\n"
-    
-    # 1. Welcome Screen Buttons Clicks
     for i, btn in enumerate(buttons):
         btn_id = f"btn_{i}"
         count = clicks.get(btn_id, 0)
@@ -224,11 +223,8 @@ def show_click_stats(message):
         
     claim_count = clicks.get("claim_btn_click", 0)
     app_btn_count = clicks.get("app_btn_click", 0)
-    
     report += f"🎉 Claim Button Clicks: <code>{claim_count}</code>\n"
     report += f"🔗 Success App Button Clicks: <code>{app_btn_count}</code>\n\n"
-    
-    # 2. Specific Broadcast Links Clicks (Message ID Wise)
     report += "📢 <b>BROADCAST MESSAGES LINKS REPORT:</b>\n"
     broadcast_keys = [k for k in clicks.keys() if k.startswith("bc_msg_")]
     
@@ -321,7 +317,6 @@ def add_button_command(message):
 
         settings = load_settings()
         buttons = settings.get("dynamic_buttons", [])
-
         new_btn = {"text": btn_name, "url": btn_url}
         if 0 <= btn_index < len(buttons):
             buttons[btn_index] = new_btn
@@ -442,7 +437,7 @@ def handle_start(message):
     if message.from_user.id in banned:
         bot.send_message(message.chat.id, "❌ Aapko is bot se permanent BAN kar diya gaya hai.")
         return
-    # Note: Ensure you define send_welcome(message) elsewhere or handle start logic here.
+    save_user(message.from_user.id)
     try:
         settings = load_settings()
         bot.send_message(message.chat.id, settings["text"], parse_mode='HTML')
@@ -477,15 +472,11 @@ def handle_messages(message):
         text_to_scan = message.text if message.text else (message.caption if message.caption else "")
         urls = re.findall(r'(https?://\S+)', text_to_scan)
         
-        # Ek unique link map banayenge jo message id ko link ke sath save rakhega
         msg_id_str = str(message.message_id)
-        
-        # Register button lagaya jiske callback me message id track hogi
         markup = types.InlineKeyboardMarkup()
         register_btn = types.InlineKeyboardButton("Register Link", callback_data=f"click_bc_{msg_id_str}")
         markup.add(register_btn)
         
-        # Settings me is message id ke liye url maps lock kar do
         if urls:
             if "broadcast_links" not in settings: settings["broadcast_links"] = {}
             settings["broadcast_links"][msg_id_str] = urls[0]
@@ -498,7 +489,6 @@ def handle_messages(message):
         bot.send_message(ADMIN_ID, f"🚀 <b>{len(users)} users ko broadcast shuru... (Message ID: #{msg_id_str})</b>", reply_markup=cancel_markup, parse_mode='HTML')
         
         count = 0
-        blocked_count = 0
         failed_count = 0
         cancel_broadcast_flag = False
         
@@ -511,4 +501,11 @@ def handle_messages(message):
                 if message.forward_from_chat or message.forward_from or message.forward_sender_name:
                     bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
                 else:
-                    sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.messag
+                    sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
+                    
+                    if settings.get("auto_pin", True):
+                        if str(user_id) in last_pinned:
+                            try: 
+                                bot.unpin_chat_message(chat_id=user_id, message_id=last_pinned[str(user_id)])
+                            except: pass
+              
