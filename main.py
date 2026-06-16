@@ -23,7 +23,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = "YAHAN_TOKEN_PASTE_KARO"  # <-- Apna token double quotes ke andar daalein!
+API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM"  # <-- Apna token double quotes ke andar daalein!
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632
 
