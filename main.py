@@ -22,7 +22,7 @@ def keep_alive():
     t.start()
 
 # --- BOT SETTINGS ---
-API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM"  # Yahan apna token dalein
+API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM"
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632
 
@@ -135,7 +135,8 @@ def load_clicks():
 
 def save_clicks(data):
     with open(CLICK_FILE, "w") as f: json.dump(data, f)
-        # --- CHANNEL POST HANDLERS ---
+
+# --- CHANNEL POST HANDLERS ---
 @bot.channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_channel_post(message):
     if message.chat.id == CONNECTED_CHANNEL:
@@ -173,10 +174,10 @@ def toggle_success_mode(message):
         settings = load_settings()
         if opt == 'on':
             settings["success_mode"] = True
-            msg = "🟢 <b>Success Mode: ON</b> (Ab timer ke baad Photo + Promo Code + Register Button dikhega!)"
+            msg = "🟢 <b>Success Mode: ON</b>"
         else:
             settings["success_mode"] = False
-            msg = "🔴 <b>Success Mode: OFF</b> (Ab timer ke baad purana Error text hi dikhega!)"
+            msg = "🔴 <b>Success Mode: OFF</b>"
         save_settings(settings)
         bot.reply_to(message, msg, parse_mode='HTML')
     except:
@@ -190,11 +191,10 @@ def change_link(message):
         settings = load_settings()
         settings["reg_link"] = new_link
         save_settings(settings)
-        bot.reply_to(message, f"✅ <b>Naya Application Link add ho gaya!</b>\nURL: <code>{new_link}</code>", parse_mode='HTML')
+        bot.reply_to(message, f"✅ Link Update: <code>{new_link}</code>", parse_mode='HTML')
     except:
         bot.reply_to(message, "❌ Format: <code>/setlink [Link]</code>", parse_mode='HTML')
-
-@bot.message_handler(commands=['setsuccessphoto'])
+        @bot.message_handler(commands=['setsuccessphoto'])
 def change_success_photo(message):
     if message.from_user.id != ADMIN_ID: return
     try:
@@ -202,7 +202,7 @@ def change_success_photo(message):
         settings = load_settings()
         settings["success_image"] = new_photo
         save_settings(settings)
-        bot.reply_to(message, f"✅ <b>Success Mode ki Photo Link badal gayi!</b>", parse_mode='HTML')
+        bot.reply_to(message, f"✅ Success Photo URL Badli!", parse_mode='HTML')
     except:
         bot.reply_to(message, "❌ Format: <code>/setsuccessphoto [URL]</code>", parse_mode='HTML')
 
@@ -212,31 +212,14 @@ def show_click_stats(message):
     clicks = load_clicks()
     settings = load_settings()
     buttons = settings.get("dynamic_buttons", [])
-    
     report = "📊 <b>LIVE BUTTON CLICKS REPORT</b>\n\n"
-    
     for i, btn in enumerate(buttons):
         btn_id = f"btn_{i}"
         count = clicks.get(btn_id, 0)
-        report += f"🔘 Button {i+1}: <b>{btn['text']}</b>\n🎯 Total Clicks: <code>{count}</code>\n\n"
-        
+        report += f"🔘 {btn['text']}: <code>{count}</code>\n"
     claim_count = clicks.get("claim_btn_click", 0)
     app_btn_count = clicks.get("app_btn_click", 0)
-    
-    report += f"🎉 Claim Button Clicks: <code>{claim_count}</code>\n"
-    report += f"🔗 Success App Button Clicks: <code>{app_btn_count}</code>\n\n"
-    
-    report += "📢 <b>BROADCAST MESSAGES LINKS REPORT:</b>\n"
-    broadcast_keys = [k for k in clicks.keys() if k.startswith("bc_msg_")]
-    
-    if not broadcast_keys:
-        report += "<i>Abhi tak kisi broadcast link par click nahi hua.</i>"
-    else:
-        for key in broadcast_keys:
-            msg_id = key.split("_")[2]
-            count = clicks[key]
-            report += f"👉 Message ID <code>#{msg_id}</code> Link Clicks: <code>{count}</code>\n"
-            
+    report += f"\n🎉 Claim Clicks: <code>{claim_count}</code>\n🔗 App Clicks: <code>{app_btn_count}</code>\n"
     bot.reply_to(message, report, parse_mode='HTML')
 
 @bot.message_handler(commands=['stats'])
@@ -244,7 +227,7 @@ def show_stats(message):
     if message.from_user.id != ADMIN_ID: return
     users = get_users()
     banned = get_banned_users()
-    bot.reply_to(message, f"📊 <b>Bot Statistics:</b>\n\n👥 Total Active Users: <code>{len(users)}</code>\n🚫 Total Banned Users: <code>{len(banned)}</code>", parse_mode='HTML')
+    bot.reply_to(message, f"👥 Total Users: <code>{len(users)}</code>\n🚫 Banned: <code>{len(banned)}</code>", parse_mode='HTML')
 
 @bot.message_handler(commands=['export'])
 def export_database(message):
@@ -253,7 +236,7 @@ def export_database(message):
     with open("backup_users.txt", "w") as f:
         for u_id in users: f.write(f"{u_id}\n")
     with open("backup_users.txt", "rb") as doc:
-        bot.send_document(message.chat.id, doc, caption="💾 Aapka Users Database Backup File.")
+        bot.send_document(message.chat.id, doc, caption="💾 Backup File.")
     os.remove("backup_users.txt")
 
 @bot.message_handler(commands=['maintenance_on'])
@@ -262,7 +245,7 @@ def maintenance_on(message):
     settings = load_settings()
     settings["maintenance"] = True
     save_settings(settings)
-    bot.reply_to(message, "🛠 Maintenance Mode: ON 🔴")
+    bot.reply_to(message, "🛠 Maintenance: ON 🔴")
 
 @bot.message_handler(commands=['maintenance_off'])
 def maintenance_off(message):
@@ -270,7 +253,7 @@ def maintenance_off(message):
     settings = load_settings()
     settings["maintenance"] = False
     save_settings(settings)
-    bot.reply_to(message, "🛠 Maintenance Mode: OFF 🟢")
+    bot.reply_to(message, "🛠 Maintenance: OFF 🟢")
 
 @bot.message_handler(commands=['setpin'])
 def toggle_pin(message):
@@ -278,14 +261,10 @@ def toggle_pin(message):
     try:
         opt = message.text.split(maxsplit=1)[1].strip().lower()
         settings = load_settings()
-        if opt == 'on':
-            settings["auto_pin"] = True
-            bot.reply_to(message, "📌 Auto-Pin Mode: ON 🟢")
-        elif opt == 'off':
-            settings["auto_pin"] = False
-            bot.reply_to(message, "📌 Auto-Pin Mode: OFF 🔴")
+        settings["auto_pin"] = (opt == 'on')
         save_settings(settings)
-    except: bot.reply_to(message, "❌ Format galat hai.")
+        bot.reply_to(message, f"📌 Auto-Pin: {opt.upper()}")
+    except: bot.reply_to(message, "❌ Use: /setpin [on/off]")
 
 @bot.message_handler(commands=['ban'])
 def ban_user_command(message):
@@ -293,8 +272,8 @@ def ban_user_command(message):
     try:
         target_id = int(message.text.split()[1])
         ban_user_id(target_id)
-        bot.reply_to(message, f"✅ User <code>{target_id}</code> BAN ho gaya!", parse_mode='HTML')
-    except: bot.reply_to(message, "❌ Use: `/ban ID`")
+        bot.reply_to(message, f"✅ User {target_id} Banned!")
+    except: bot.reply_to(message, "❌ Use: /ban ID")
 
 @bot.message_handler(commands=['unban'])
 def unban_user_command(message):
@@ -302,8 +281,8 @@ def unban_user_command(message):
     try:
         target_id = int(message.text.split()[1])
         unban_user_id(target_id)
-        bot.reply_to(message, f"✅ User <code>{target_id}</code> UNBAN ho gaya!", parse_mode='HTML')
-    except: bot.reply_to(message, "❌ Use: `/unban ID`")
+        bot.reply_to(message, f"✅ User {target_id} Unbanned!")
+    except: bot.reply_to(message, "❌ Use: /unban ID")
 
 @bot.message_handler(commands=['addbutton'])
 def add_button_command(message):
@@ -313,25 +292,17 @@ def add_button_command(message):
         parts = content.split(maxsplit=1)
         btn_index = int(parts[0]) - 1
         details = parts[1].split('|')
-        btn_name = details[0].strip()
-        btn_url = details[1].strip()
-
         settings = load_settings()
         buttons = settings.get("dynamic_buttons", [])
-
-        new_btn = {"text": btn_name, "url": btn_url}
+        new_btn = {"text": details[0].strip(), "url": details[1].strip()}
         if 0 <= btn_index < len(buttons):
             buttons[btn_index] = new_btn
-            msg = f"✅ Button {btn_index + 1} update ho gaya!"
         else:
             buttons.append(new_btn)
-            msg = f"✅ Naya Button {len(buttons)} jodh diya gaya!"
-
         settings["dynamic_buttons"] = buttons
         save_settings(settings)
-        bot.reply_to(message, msg)
-    except:
-        bot.reply_to(message, "❌ Format: `/addbutton [Number] [Naam] | [Link]`")
+        bot.reply_to(message, "✅ Button Saved!")
+    except: bot.reply_to(message, "❌ Format: /addbutton [Num] [Name] | [Link]")
 
 @bot.message_handler(commands=['delbutton'])
 def del_button_command(message):
@@ -341,17 +312,11 @@ def del_button_command(message):
         settings = load_settings()
         buttons = settings.get("dynamic_buttons", [])
         if 0 <= btn_index < len(buttons):
-            removed = buttons.pop(btn_index)
+            buttons.pop(btn_index)
             settings["dynamic_buttons"] = buttons
             save_settings(settings)
-            clicks = load_clicks()
-            btn_id = f"btn_{btn_index}"
-            if btn_id in clicks: clicks[btn_id] = 0
-            save_clicks(clicks)
-            bot.reply_to(message, f"✅ Button '{removed['text']}' ko delete kar diya gaya!")
-        else: bot.reply_to(message, "❌ Is number ka koi button nahi hai.")
-    except:
-        bot.reply_to(message, "❌ Format: `/delbutton [Number]`")
+            bot.reply_to(message, "✅ Button Deleted!")
+    except: bot.reply_to(message, "❌ Format: /delbutton [Num]")
 
 @bot.message_handler(commands=['seterrortext'])
 def change_error_text_command(message):
@@ -361,9 +326,8 @@ def change_error_text_command(message):
         settings = load_settings()
         settings["error_text"] = new_err
         save_settings(settings)
-        bot.reply_to(message, "✅ Error Alert Text badal gaya!")
-    except:
-        bot.reply_to(message, "❌ Format: `/seterrortext [text]`")
+        bot.reply_to(message, "✅ Error Text Update!")
+    except: bot.reply_to(message, "❌ Format: /seterrortext [text]")
 
 @bot.message_handler(commands=['setprocesstext'])
 def change_process_text_command(message):
@@ -373,9 +337,8 @@ def change_process_text_command(message):
         settings = load_settings()
         settings["process_text"] = new_proc
         save_settings(settings)
-        bot.reply_to(message, "✅ Processing Timer Text badal gaya!")
-    except:
-        bot.reply_to(message, "❌ Format: `/setprocesstext [text]`")
+        bot.reply_to(message, "✅ Processing Text Update!")
+    except: bot.reply_to(message, "❌ Format: /setprocesstext [text]")
 
 @bot.message_handler(commands=['settext'])
 def change_text(message):
@@ -385,8 +348,8 @@ def change_text(message):
         settings = load_settings()
         settings["text"] = new_text
         save_settings(settings)
-        bot.reply_to(message, "✅ Welcome Text badal gaya!")
-    except: bot.reply_to(message, "❌ Format galat hai.")
+        bot.reply_to(message, "✅ Welcome Text Update!")
+    except: bot.reply_to(message, "❌ Format: /settext [text]")
 
 @bot.message_handler(commands=['setphoto'])
 def change_photo(message):
@@ -396,8 +359,8 @@ def change_photo(message):
         settings = load_settings()
         settings["image"] = new_photo
         save_settings(settings)
-        bot.reply_to(message, "✅ Bot ki Main Photo URL badal gayi!")
-    except: bot.reply_to(message, "❌ Format galat hai.")
+        bot.reply_to(message, "✅ Main Photo Update!")
+    except: bot.reply_to(message, "❌ Format: /setphoto [url]")
 
 @bot.message_handler(commands=['setcode'])
 def change_code(message):
@@ -407,100 +370,65 @@ def change_code(message):
         settings = load_settings()
         settings["code"] = new_code
         save_settings(settings)
-        bot.reply_to(message, f"🎁 Code badal kar <b>{new_code}</b> ho gaya!", parse_mode='HTML')
-    except: bot.reply_to(message, "❌ Format galat hai.")
+        bot.reply_to(message, f"🎁 Code Update: {new_code}")
+    except: bot.reply_to(message, "❌ Format: /setcode [code]")
 
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
     if message.from_user.id != ADMIN_ID: return
-    panel_text = (
-        "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
-        "📊 <code>/stats</code> | 📈 <code>/clickstats</code>\n"
-        "💾 <code>/export</code> | 🔴 <code>/maintenance_on</code>\n"
-        "🟢 <code>/maintenance_off</code> | 📌 <code>/setpin [on/off]</code>\n"
-        "🚫 <code>/ban [ID]</code> | ✅ <code>/unban [ID]</code>\n\n"
-        "🎛 <b>Smart Mode Switch:</b>\n"
-        "🔀 <code>/switchmode [on/off]</code>\n"
-        "🔗 <code>/setlink [URL]</code> | 🖼 <code>/setsuccessphoto [URL]</code>\n\n"
-        "🔘 <b>Buttons Control:</b>\n"
-        "➕ <code>/addbutton [Num] [Naam] | [Link]</code>\n"
-        "➖ <code>/delbutton [Num]</code>\n\n"
-        "📝 <b>Texts Control:</b>\n"
-        "⏳ <code>/setprocesstext [text]</code>\n"
-        "⚠️ <code>/seterrortext [text]</code>\n"
-        "📝 <code>/settext [text]</code> | 🖼 <code>/setphoto [url]</code>\n"
-        "🎁 <code>/setcode [code]</code>"
-    )
+    panel_text = "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n/stats | /clickstats\n/export | /maintenance_on\n/maintenance_off | /setpin [on/off]\n/ban [ID] | /unban [ID]\n/switchmode [on/off]\n/setlink [URL] | /setsuccessphoto [URL]\n/addbutton [Num] [Name] | [Link]\n/delbutton [Num]\n/setprocesstext [text]\n/seterrortext [text]\n/settext [text] | /setphoto [url]\n/setcode [code]"
     bot.send_message(message.chat.id, panel_text, parse_mode='HTML')
-    @bot.message_handler(commands=['start'])
+
+@bot.message_handler(commands=['start'])
 def handle_start(message):
     banned = get_banned_users()
     if message.from_user.id in banned:
-        bot.send_message(message.chat.id, "❌ Aapko is bot se permanent BAN kar diya gaya hai.")
+        bot.send_message(message.chat.id, "❌ Banned!")
         return
     send_welcome(message)
 
-# --- BROADCAST CANCEL HANDLER ---
 @bot.callback_query_handler(func=lambda call: call.data == "cancel_broadcast")
 def cancel_broadcast_callback(call):
     global cancel_broadcast_flag
     if call.from_user.id == ADMIN_ID:
         cancel_broadcast_flag = True
-        bot.answer_callback_query(call.id, "Stopping process...")
-        bot.edit_message_text("⚠️ <b>Broadcast Canceled by Admin!</b>", chat_id=ADMIN_ID, message_id=call.message.message_id, parse_mode='HTML')
+        bot.answer_callback_query(call.id, "Stopping...")
+        bot.edit_message_text("⚠️ <b>Canceled!</b>", chat_id=ADMIN_ID, message_id=call.message.message_id, parse_mode='HTML')
 
-# --- SMART BROADCAST HANDLER ---
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_messages(message):
     global cancel_broadcast_flag
     users = get_users() 
     settings = load_settings()
     banned = get_banned_users()
-
     if message.from_user.id in banned: return
-
     if (settings["maintenance"] and message.from_user.id != ADMIN_ID):
-        bot.send_message(message.chat.id, "🛠 Bot Maintenance Mode Me Hai.")
+        bot.send_message(message.chat.id, "🛠 Maintenance Mode.")
         return
-
     if message.from_user.id == ADMIN_ID:
         if message.text and message.text.startswith('/'): return
-
         text_to_scan = message.text if message.text else (message.caption if message.caption else "")
         urls = re.findall(r'(https?://\S+)', text_to_scan)
-        
         msg_id_str = str(message.message_id)
-        
         markup = types.InlineKeyboardMarkup()
-        register_btn = types.InlineKeyboardButton("Register Link", callback_data=f"click_bc_{msg_id_str}")
-        markup.add(register_btn)
-        
+        markup.add(types.InlineKeyboardButton("Register Link", callback_data=f"click_bc_{msg_id_str}"))
         if urls:
             if "broadcast_links" not in settings: settings["broadcast_links"] = {}
             settings["broadcast_links"][msg_id_str] = urls[0]
             save_settings(settings)
-
         cancel_markup = types.InlineKeyboardMarkup()
-        cancel_btn = types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast")
-        cancel_markup.add(cancel_btn)
-
-        bot.send_message(ADMIN_ID, f"🚀 <b>{len(users)} users ko broadcast shuru... (Message ID: #{msg_id_str})</b>", reply_markup=cancel_markup, parse_mode='HTML')
-        
-        count = 0
-        blocked_count = 0
-        failed_count = 0
+        cancel_markup.add(types.InlineKeyboardButton("❌ Cancel", callback_data="cancel_broadcast"))
+        bot.send_message(ADMIN_ID, f"🚀 Broadcast Started...", reply_markup=cancel_markup, parse_mode='HTML')
+        count, blocked_count, failed_count = 0, 0, 0
         cancel_broadcast_flag = False
-        
-        active_users = list(users)
         last_pinned = settings.get("last_pinned_msgs", {})
-        for user_id in active_users:
+        for user_id in list(users):
             if cancel_broadcast_flag: break
             try:
                 if message.forward_from_chat or message.forward_from or message.forward_sender_name:
                     bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
                 else:
                     sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
-                    
                     if settings.get("auto_pin", True):
                         if str(user_id) in last_pinned:
                             try: bot.unpin_chat_message(chat_id=user_id, message_id=last_pinned[str(user_id)])
@@ -516,53 +444,35 @@ def handle_messages(message):
                     if user_id in users: users.remove(user_id)
                 else: failed_count += 1
             except: failed_count += 1
-            
         save_users_list(users)
         settings["last_pinned_msgs"] = last_pinned
         save_settings(settings)
-        
-        report_text = (
-            "📢 <b>BROADCAST DELIVERY REPORT</b>\n\n"
-            f"✅ Successfully Sent: <code>{count}</code> users\n"
-            f"❌ Blocked/Kicked: <code>{blocked_count}</code> users\n"
-            f"⚠️ Failed/Error: <code>{failed_count}</code> users\n\n"
-            f"📊 Remaining Active Users: <code>{len(users)}</code>"
-        )
-        if cancel_broadcast_flag: report_text = "⚠️ <b>Broadcast Canceled Midway!</b>\n\n" + report_text
-        bot.send_message(ADMIN_ID, report_text, parse_mode='HTML')
+        bot.send_message(ADMIN_ID, f"✅ Sent: {count} | ❌ Blocked: {blocked_count}", parse_mode='HTML')
     else:
         if message.content_type == 'text' and message.text == "/start":
             send_welcome(message)
 
-# --- WELCOME FUNCTION ---
 def send_welcome(message):
     save_user(message.chat.id)
     settings = load_settings()
     buttons = settings.get("dynamic_buttons", [])
     markup = types.InlineKeyboardMarkup()
     row_btns = []
-    
     for i, btn in enumerate(buttons):
         row_btns.append(types.InlineKeyboardButton(btn["text"], callback_data=f"track_click_{i}"))
         if len(row_btns) == 2:
             markup.row(row_btns[0], row_btns[1])
             row_btns = []
     if row_btns: markup.row(row_btns[0])
-    claim_btn = types.InlineKeyboardButton("🎉 Get My Free Code", callback_data="claim_code")
-    markup.row(claim_btn)
+    markup.row(types.InlineKeyboardButton("🎉 Get My Free Code", callback_data="claim_code"))
     try: bot.send_photo(message.chat.id, settings.get("image"), caption=settings.get("text"), reply_markup=markup, parse_mode='HTML')
     except: bot.send_message(message.chat.id, settings.get("text"), reply_markup=markup, parse_mode='HTML')
 
-# --- DELAYED VERIFICATION FUNCTION TO PREVENT FREEZING ---
 def delayed_verification(user_id, proc_msg_id, settings):
     if settings.get("success_mode", False):
         success_markup = types.InlineKeyboardMarkup()
         success_markup.add(types.InlineKeyboardButton("🔗 Register/Claim Button", callback_data="click_success_app"))
-        success_text = (
-            "✅ <b>VERIFICATION SUCCESSFUL!</b>\n\n"
-            f"🎁 <b>Code: {settings.get('code')}</b>\n\n"
-            "👇 <b>Click below to claim:</b>"
-        )
+        success_text = f"✅ <b>VERIFICATION SUCCESSFUL!</b>\n\n🎁 <b>Code: {settings.get('code')}</b>"
         try:
             bot.delete_message(chat_id=user_id, message_id=proc_msg_id)
             bot.send_photo(chat_id=user_id, photo=settings.get("success_image"), caption=success_text, reply_markup=success_markup, parse_mode='HTML')
@@ -571,39 +481,28 @@ def delayed_verification(user_id, proc_msg_id, settings):
         try: bot.edit_message_text(text=settings.get("error_text"), chat_id=user_id, message_id=proc_msg_id, parse_mode='HTML')
         except: pass
 
-# --- CALLBACK HANDLER ---
 @bot.callback_query_handler(func=lambda call: call.data != "cancel_broadcast")
 def callback_query(call):
     settings = load_settings()
     clicks = load_clicks()
     user_id = call.message.chat.id
-    
     if call.data == "claim_code":
         clicks["claim_btn_click"] = clicks.get("claim_btn_click", 0) + 1
         save_clicks(clicks)
-        
-        bot.answer_callback_query(call.id, "⏳ Verifying your channels...")
+        bot.answer_callback_query(call.id, "⏳ Verifying...")
         proc_msg = bot.send_message(user_id, settings.get("process_text"), parse_mode='HTML')
-        
-        t = Timer(5.0, delayed_verification, args=[user_id, proc_msg.message_id, settings])
-        t.start()
-        
+        Timer(5.0, delayed_verification, args=[user_id, proc_msg.message_id, settings]).start()
     elif call.data == "click_success_app":
         clicks["app_btn_click"] = clicks.get("app_btn_click", 0) + 1
         save_clicks(clicks)
         bot.answer_callback_query(call.id, url=settings.get("reg_link"))
-        
     elif call.data.startswith("click_bc_"):
         msg_id_str = call.data.split("_")[2]
         click_key = f"bc_msg_{msg_id_str}"
-        
         clicks[click_key] = clicks.get(click_key, 0) + 1
         save_clicks(clicks)
-        
         bc_links = settings.get("broadcast_links", {})
-        target_url = bc_links.get(msg_id_str, settings.get("reg_link"))
-        bot.answer_callback_query(call.id, url=target_url)
-        
+        bot.answer_callback_query(call.id, url=bc_links.get(msg_id_str, settings.get("reg_link")))
     elif call.data.startswith("track_click_"):
         btn_index = int(call.data.split("_")[2])
         buttons = settings.get("dynamic_buttons", [])
@@ -616,3 +515,4 @@ def callback_query(call):
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
+    
