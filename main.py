@@ -555,7 +555,6 @@ def send_welcome(message):
 
 # --- DELAYED VERIFICATION FUNCTION TO PREVENT FREEZING ---
 def delayed_verification(user_id, proc_msg_id, settings):
-    clicks = load_clicks()
     if settings.get("success_mode", False):
         success_markup = types.InlineKeyboardMarkup()
         success_markup.add(types.InlineKeyboardButton("🔗 Register/Claim Button", callback_data="click_success_app"))
@@ -586,7 +585,6 @@ def callback_query(call):
         bot.answer_callback_query(call.id, "⏳ Verifying your channels...")
         proc_msg = bot.send_message(user_id, settings.get("process_text"), parse_mode='HTML')
         
-        # Freezing se bachne ke liye background main threading lagayi gayi hai
         t = Timer(5.0, delayed_verification, args=[user_id, proc_msg.message_id, settings])
         t.start()
         
@@ -618,4 +616,3 @@ def callback_query(call):
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
-    
