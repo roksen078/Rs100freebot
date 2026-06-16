@@ -8,7 +8,7 @@ from flask import Flask
 from threading import Thread
 
 # --- BOT SETTINGS (SABSE PEHLE) ---
-API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM"  # <--- Is quotes ke andar hi apna token daalein
+API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM"  # <--- Is quotes ke andar apna sahi token daalein
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632
 
@@ -508,4 +508,4 @@ def handle_messages(message):
                             try: 
                                 bot.unpin_chat_message(chat_id=user_id, message_id=last_pinned[str(user_id)])
                             except: pass
-              
+            
