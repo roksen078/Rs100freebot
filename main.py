@@ -8,7 +8,7 @@ from flask import Flask
 from threading import Thread
 
 # --- BOT SETTINGS (SABSE PEHLE) ---
-API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM"  # <--- Is quotes ke andar apna sahi token daalein
+API_TOKEN = "8313028390:AAFBc5ELaeEg4LUi_oPzkOlmiCSKNdFDjzM"  # <--- Is quotes ke andar apna sahi token dalein
 ADMIN_ID = 1908832842
 CONNECTED_CHANNEL = -1002145879632
 
@@ -508,4 +508,24 @@ def handle_messages(message):
                             try: 
                                 bot.unpin_chat_message(chat_id=user_id, message_id=last_pinned[str(user_id)])
                             except: pass
-            
+                        try:
+                            bot.pin_chat_message(chat_id=user_id, message_id=sent_msg.message_id)
+                            last_pinned[str(user_id)] = sent_msg.message_id
+                        except: pass
+                count += 1
+            except:
+                failed_count += 1
+        
+        settings["last_pinned_msgs"] = last_pinned
+        save_settings(settings)
+        bot.send_message(ADMIN_ID, f"📢 <b>Broadcast Completed!</b>\n\n✅ Sent: <code>{count}</code>\n❌ Failed/Blocked: <code>{failed_count}</code>", parse_mode='HTML')
+
+# --- WEB SERVER & POLLING START ---
+if __name__ == '__main__':
+    keep_alive()
+    print("Bot is polling...")
+    try:
+        bot.infinity_polling(timeout=20, long_polling_timeout=20)
+    except Exception as e:
+        print(f"Error structure down: {e}")
+        
