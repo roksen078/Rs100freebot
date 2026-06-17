@@ -52,11 +52,11 @@ def load_settings():
     default = {
         "maintenance": False,
         "auto_pin": True,
-        "success_mode": False,  # Abhi default OFF hai yani error message hi aayega
+        "success_mode": False,  
         "last_pinned_msgs": {},
         "text": "<b>🎉 Join Official Big Promo Code Channel</b>\n\n<b>📅 Daily FREE BIG CODE</b>\n\n<b>👇 Join our channels below and claim your code!</b>",
         "image": "https://t.me/TG_Looters/3",
-        "success_image": "https://t.me/TG_Looters/3", # Success Mode ke liye alag photo link
+        "success_image": "https://t.me/TG_Looters/3", 
         "code": "LOOT200",  
         "reg_link": "https://share-rxapq9cajg.iw7.io/share/agent/SD08SPTT?data=eyJtljoxLCJsyW5kIjoxLCJpZCI6IjAifQ==",
         "error_text": "⚠️ <b>Aapne Join Nahi Kiya!</b>\n\n<b>Kripaya upar diye gaye 4 channels join karein.</b>\n\n📌 <b>Zaruri: 4 channels ko Pin karke rakho, tabhi code milega!</b>",
@@ -136,17 +136,44 @@ def load_clicks():
 def save_clicks(data):
     with open(CLICK_FILE, "w") as f: json.dump(data, f)
 
-# --- CHANNEL POST HANDLERS ---
+# --- 🎯 FIXED CHANNEL POST HANDLER (AUTO REGISTER LINK CODES) ---
 @bot.channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_channel_post(message):
     if message.chat.id == CONNECTED_CHANNEL:
         users = get_users()
         sent_msg_ids = []
+        
+        # Message text ya caption nikaalna
+        msg_text = message.text if message.text else message.caption
+        if not msg_text:
+            msg_text = ""
+
+        # Regular Expression se text ke andar se pehla URL (link) dhundhna
+        urls = re.findall(r'(https?://\S+)', msg_text)
+        
+        # Default link settings se uthayega agar text mein koi link na mila toh
+        settings = load_settings()
+        extracted_url = urls[0] if urls else settings.get("reg_link")
+
+        # Dynamic Register Button bana rahe hain extracted link ke saath
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("Register Link", url=extracted_url))
+
         for user_id in users:
             try:
-                sent_msg = bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
+                # Agar photo hai toh photo copy karke bhejo inline button ke saath
+                if message.content_type == 'photo':
+                    sent_msg = bot.send_photo(chat_id=user_id, photo=message.photo[-1].file_id, caption=message.caption, reply_markup=markup, parse_mode='HTML')
+                # Agar sirf text hai toh text bhejo inline button ke saath
+                elif message.content_type == 'text':
+                    sent_msg = bot.send_message(chat_id=user_id, text=message.text, reply_markup=markup, parse_mode='HTML')
+                else:
+                    # Baaki files ke liye purana forward logic safe side ke liye
+                    sent_msg = bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
+                
                 sent_msg_ids.append({"user_id": user_id, "msg_id": sent_msg.message_id})
             except: pass
+            
         logs = load_msg_log()
         logs[str(message.message_id)] = sent_msg_ids
         save_msg_log(logs)
@@ -157,12 +184,22 @@ def handle_edited_channel_post(message):
         logs = load_msg_log()
         ch_msg_id = str(message.message_id)
         if ch_msg_id in logs:
+            msg_text = message.text if message.text else message.caption
+            if not msg_text: msg_text = ""
+            
+            urls = re.findall(r'(https?://\S+)', msg_text)
+            settings = load_settings()
+            extracted_url = urls[0] if urls else settings.get("reg_link")
+            
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("Register Link", url=extracted_url))
+            
             for target in logs[ch_msg_id]:
                 try:
                     if message.text:
-                        bot.edit_message_text(text=message.text, chat_id=target["user_id"], message_id=target["msg_id"], parse_mode='HTML')
+                        bot.edit_message_text(text=message.text, chat_id=target["user_id"], message_id=target["msg_id"], reply_markup=markup, parse_mode='HTML')
                     elif message.caption:
-                        bot.edit_message_caption(caption=message.caption, chat_id=target["user_id"], message_id=target["msg_id"], parse_mode='HTML')
+                        bot.edit_message_caption(caption=message.caption, chat_id=target["user_id"], message_id=target["msg_id"], reply_markup=markup, parse_mode='HTML')
                 except: pass
 
 # --- ADMIN COMMANDS HANDLERS ---
@@ -433,99 +470,7 @@ def handle_start(message):
         return
     send_welcome(message)
 
-# --- BROADCAST CANCEL HANDLER ---
-@bot.callback_query_handler(func=lambda call: call.data == "cancel_broadcast")
-def cancel_broadcast_callback(call):
-    global cancel_broadcast_flag
-    if call.from_user.id == ADMIN_ID:
-        cancel_broadcast_flag = True
-        bot.answer_callback_query(call.id, "Stopping process...")
-        bot.edit_message_text("⚠️ <b>Broadcast Canceled by Admin!</b>", chat_id=ADMIN_ID, message_id=call.message.message_id, parse_mode='HTML')
-
-# --- SMART BROADCAST HANDLER ---
-@bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
-def handle_messages(message):
-    global cancel_broadcast_flag
-    users = get_users() 
-    settings = load_settings()
-    banned = get_banned_users()
-
-    if message.from_user.id in banned: return
-
-    if (settings["maintenance"] and message.from_user.id != ADMIN_ID):
-        bot.send_message(message.chat.id, "🛠 Bot Maintenance Mode Me Hai.")
-        return
-
-    if message.from_user.id == ADMIN_ID:
-        if message.text and message.text.startswith('/'): return
-
-        text_to_scan = message.text if message.text else (message.caption if message.caption else "")
-        urls = re.findall(r'(https?://\S+)', text_to_scan)
-        
-        markup = types.InlineKeyboardMarkup()
-        register_btn = types.InlineKeyboardButton("Register Link", callback_data="click_bc_reg")
-        markup.add(register_btn)
-        
-        if urls:
-            settings["reg_link"] = urls[0]
-            save_settings(settings)
-
-        cancel_markup = types.InlineKeyboardMarkup()
-        cancel_btn = types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast")
-        cancel_markup.add(cancel_btn)
-
-        bot.send_message(ADMIN_ID, f"🚀 <b>{len(users)} users ko broadcast shuru...</b>", reply_markup=cancel_markup, parse_mode='HTML')
-        
-        count = 0
-        blocked_count = 0
-        failed_count = 0
-        cancel_broadcast_flag = False
-        
-        active_users = list(users)
-        last_pinned = settings.get("last_pinned_msgs", {})
-
-        for user_id in active_users:
-            if cancel_broadcast_flag: break
-            try:
-                if message.forward_from_chat or message.forward_from or message.forward_sender_name:
-                    bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
-                else:
-                    sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
-                    
-                    if settings.get("auto_pin", True):
-                        if str(user_id) in last_pinned:
-                            try: bot.unpin_chat_message(chat_id=user_id, message_id=last_pinned[str(user_id)])
-                            except: pass
-                        try:
-                            bot.pin_chat_message(chat_id=user_id, message_id=sent_msg.message_id, disable_notification=True)
-                            last_pinned[str(user_id)] = sent_msg.message_id
-                        except: pass
-                count += 1
-            except telebot.api_helper.ApiTelegramException as ex:
-                if ex.error_code == 403:
-                    blocked_count += 1
-                    if user_id in users: users.remove(user_id)
-                else: failed_count += 1
-            except: failed_count += 1
-            
-        save_users_list(users)
-        settings["last_pinned_msgs"] = last_pinned
-        save_settings(settings)
-        
-        report_text = (
-            "📢 <b>BROADCAST DELIVERY REPORT</b>\n\n"
-            f"✅ Successfully Sent: <code>{count}</code> users\n"
-            f"❌ Blocked/Kicked: <code>{blocked_count}</code> users\n"
-            f"⚠️ Failed/Error: <code>{failed_count}</code> users\n\n"
-            f"📊 Remaining Active Users: <code>{len(users)}</code>"
-        )
-        if cancel_broadcast_flag: report_text = "⚠️ <b>Broadcast Canceled Midway!</b>\n\n" + report_text
-        bot.send_message(ADMIN_ID, report_text, parse_mode='HTML')
-    else:
-        if message.content_type == 'text' and message.text == "/start":
-            send_welcome(message)
-
-# --- WELCOME FUNCTION ---
+# --- 🎯 FIXED WELCOME FUNCTION (DIRECT URL CHANNELS LINK) ---
 def send_welcome(message):
     save_user(message.chat.id)
     settings = load_settings()
@@ -534,8 +479,9 @@ def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
     row_btns = []
     
+    # Yahan callback_data hata kar direct url=btn["url"] lagaya gaya hai
     for i, btn in enumerate(buttons):
-        row_btns.append(types.InlineKeyboardButton(btn["text"], callback_data=f"track_click_{i}"))
+        row_btns.append(types.InlineKeyboardButton(btn["text"], url=btn["url"]))
         if len(row_btns) == 2:
             markup.row(row_btns[0], row_btns[1])
             row_btns = []
@@ -566,9 +512,9 @@ def callback_query(call):
         
         # CHOOSE MODE
         if settings.get("success_mode", False):
-            # SUCCESS MODE ON: Photo + Text + Link Button
+            # SUCCESS MODE ON: Photo + Text + Direct Link Button
             success_markup = types.InlineKeyboardMarkup()
-            success_markup.add(types.InlineKeyboardButton("🔗 Register/Claim Button", callback_data="click_success_app"))
+            success_markup.add(types.InlineKeyboardButton("🔗 Register/Claim Button", url=settings.get("reg_link")))
             
             success_text = (
                 "✅ <b>VERIFICATION SUCCESSFUL!</b>\n\n"
@@ -595,15 +541,6 @@ def callback_query(call):
         clicks["broadcast_reg"] = clicks.get("broadcast_reg", 0) + 1
         save_clicks(clicks)
         bot.answer_callback_query(call.id, url=settings.get("reg_link"))
-
-    elif call.data.startswith("track_click_"):
-        btn_index = int(call.data.split("_")[2])
-        buttons = settings.get("dynamic_buttons", [])
-        if 0 <= btn_index < len(buttons):
-            btn_id = f"btn_{btn_index}"
-            clicks[btn_id] = clicks.get(btn_id, 0) + 1
-            save_clicks(clicks)
-            bot.answer_callback_query(call.id, url=buttons[btn_index]["url"])
 
 if __name__ == "__main__":
     keep_alive()
