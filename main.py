@@ -135,7 +135,9 @@ def load_clicks():
 
 def save_clicks(data):
     with open(CLICK_FILE, "w") as f: json.dump(data, f)
-                  # --- 🎯 ORIGINAL LIVE BROADCAST SYSTEM WITH DELIVERY REPORT & CANCEL BUTTON ---
+
+
+# --- 🎯 ORIGINAL LIVE BROADCAST SYSTEM WITH DELIVERY REPORT & CANCEL BUTTON ---
 @bot.channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_channel_post(message):
     global cancel_broadcast_flag
@@ -153,7 +155,6 @@ def handle_channel_post(message):
     
     cancel_broadcast_flag = False
 
-    # 1. Admin ko sabse pehle shuruat ka status message bhejna
     status_markup = types.InlineKeyboardMarkup()
     status_markup.add(types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast"))
     
@@ -167,7 +168,6 @@ def handle_channel_post(message):
     except:
         status_msg = None
 
-    # 2. Sabhi users ko loop chala kar message copy/forward karna
     for index, user_id in enumerate(users):
         if cancel_broadcast_flag:
             break
@@ -184,7 +184,6 @@ def handle_channel_post(message):
         except:
             failed_count += 1
 
-        # Har 10 users ke baad admin ka loading status update karega
         if status_msg and index % 10 == 0:
             try:
                 bot.edit_message_text(
@@ -196,8 +195,7 @@ def handle_channel_post(message):
                 )
             except: pass
 
-    # 3. Puraane system jaisi same to same BROADCAST DELIVERY REPORT taiyar karna
-    remaining_users = total_users - (success_count + blocked_count + failed_count)
+        remaining_users = total_users - (success_count + blocked_count + failed_count)
     
     report_text = (
         "📢 <b>BROADCAST DELIVERY REPORT</b>\n\n"
@@ -221,6 +219,7 @@ def handle_channel_post(message):
     logs[str(message.message_id)] = sent_msg_ids
     save_msg_log(logs)
 
+
 @bot.edited_channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_edited_channel_post(message):
     if message.chat.id == CONNECTED_CHANNEL:
@@ -234,7 +233,7 @@ def handle_edited_channel_post(message):
                     elif message.caption:
                         bot.edit_message_caption(caption=message.caption, chat_id=target["user_id"], message_id=target["msg_id"], parse_mode='HTML')
                 except: pass
-                    # --- ADMIN COMMANDS HANDLERS ---
+# --- ADMIN COMMANDS HANDLERS ---
 @bot.message_handler(commands=['switchmode'])
 def toggle_success_mode(message):
     if message.from_user.id != ADMIN_ID: return
@@ -252,6 +251,7 @@ def toggle_success_mode(message):
     except:
         bot.reply_to(message, "❌ Format: <code>/switchmode [on/off]</code>", parse_mode='HTML')
 
+
 @bot.message_handler(commands=['setlink'])
 def change_link(message):
     if message.from_user.id != ADMIN_ID: return
@@ -264,6 +264,7 @@ def change_link(message):
     except:
         bot.reply_to(message, "❌ Format: <code>/setlink [Link]</code>", parse_mode='HTML')
 
+
 @bot.message_handler(commands=['setsuccessphoto'])
 def change_success_photo(message):
     if message.from_user.id != ADMIN_ID: return
@@ -275,6 +276,7 @@ def change_success_photo(message):
         bot.reply_to(message, f"✅ <b>Success Mode ki Photo Link badal gayi!</b>", parse_mode='HTML')
     except:
         bot.reply_to(message, "❌ Format: <code>/setsuccessphoto [URL]</code>", parse_mode='HTML')
+
 
 @bot.message_handler(commands=['clickstats'])
 def show_click_stats(message):
@@ -299,12 +301,14 @@ def show_click_stats(message):
     
     bot.reply_to(message, report, parse_mode='HTML')
 
+
 @bot.message_handler(commands=['stats'])
 def show_stats(message):
     if message.from_user.id != ADMIN_ID: return
     users = get_users()
     banned = get_banned_users()
     bot.reply_to(message, f"📊 <b>Bot Statistics:</b>\n\n👥 Total Active Users: <code>{len(users)}</code>\n🚫 Total Banned Users: <code>{len(banned)}</code>", parse_mode='HTML')
+
 
 @bot.message_handler(commands=['export'])
 def export_database(message):
@@ -316,6 +320,7 @@ def export_database(message):
         bot.send_document(message.chat.id, doc, caption="💾 Aapka Users Database Backup File.")
     os.remove("backup_users.txt")
 
+
 @bot.message_handler(commands=['maintenance_on'])
 def maintenance_on(message):
     if message.from_user.id != ADMIN_ID: return
@@ -324,6 +329,7 @@ def maintenance_on(message):
     save_settings(settings)
     bot.reply_to(message, "🛠 Maintenance Mode: ON 🔴")
 
+
 @bot.message_handler(commands=['maintenance_off'])
 def maintenance_off(message):
     if message.from_user.id != ADMIN_ID: return
@@ -331,6 +337,7 @@ def maintenance_off(message):
     settings["maintenance"] = False
     save_settings(settings)
     bot.reply_to(message, "🛠 Maintenance Mode: OFF 🟢")
+
 
 @bot.message_handler(commands=['setpin'])
 def toggle_pin(message):
@@ -347,6 +354,7 @@ def toggle_pin(message):
         save_settings(settings)
     except: bot.reply_to(message, "❌ Format galat hai.")
 
+
 @bot.message_handler(commands=['ban'])
 def ban_user_command(message):
     if message.from_user.id != ADMIN_ID: return
@@ -356,6 +364,7 @@ def ban_user_command(message):
         bot.reply_to(message, f"✅ User <code>{target_id}</code> BAN ho gaya!", parse_mode='HTML')
     except: bot.reply_to(message, "❌ Use: `/ban ID`")
 
+
 @bot.message_handler(commands=['unban'])
 def unban_user_command(message):
     if message.from_user.id != ADMIN_ID: return
@@ -364,6 +373,7 @@ def unban_user_command(message):
         unban_user_id(target_id)
         bot.reply_to(message, f"✅ User <code>{target_id}</code> UNBAN ho gaya!", parse_mode='HTML')
     except: bot.reply_to(message, "❌ Use: `/unban ID`")
+
 
 @bot.message_handler(commands=['addbutton'])
 def add_button_command(message):
@@ -393,6 +403,7 @@ def add_button_command(message):
     except:
         bot.reply_to(message, "❌ Format: `/addbutton [Number] [Naam] | [Link]`")
 
+
 @bot.message_handler(commands=['delbutton'])
 def del_button_command(message):
     if message.from_user.id != ADMIN_ID: return
@@ -413,6 +424,7 @@ def del_button_command(message):
     except:
         bot.reply_to(message, "❌ Format: `/delbutton [Number]`")
 
+
 @bot.message_handler(commands=['seterrortext'])
 def change_error_text_command(message):
     if message.from_user.id != ADMIN_ID: return
@@ -424,6 +436,7 @@ def change_error_text_command(message):
         bot.reply_to(message, "✅ Error Alert Text badal gaya!")
     except:
         bot.reply_to(message, "❌ Format: `/seterrortext [text]`")
+
 
 @bot.message_handler(commands=['setprocesstext'])
 def change_process_text_command(message):
@@ -437,6 +450,7 @@ def change_process_text_command(message):
     except:
         bot.reply_to(message, "❌ Format: `/setprocesstext [text]`")
 
+
 @bot.message_handler(commands=['settext'])
 def change_text(message):
     if message.from_user.id != ADMIN_ID: return
@@ -448,6 +462,7 @@ def change_text(message):
         bot.reply_to(message, "✅ Welcome Text badal gaya!")
     except: bot.reply_to(message, "❌ Format galat hai.")
 
+
 @bot.message_handler(commands=['setphoto'])
 def change_photo(message):
     if message.from_user.id != ADMIN_ID: return
@@ -458,6 +473,7 @@ def change_photo(message):
         save_settings(settings)
         bot.reply_to(message, "✅ Bot ki Main Photo URL badal gayi!")
     except: bot.reply_to(message, "❌ Format galat hai.")
+
 
 @bot.message_handler(commands=['setcode'])
 def change_code(message):
@@ -475,26 +491,27 @@ def change_code(message):
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
     if message.from_user.id != ADMIN_ID: return
-
-        "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
-        "📊 <code>/stats</code> | 📈 <code>/clickstats</code>\n"
-        "💾 <code>/export</code> | 🔴 <code>/maintenance_on</code>\n"
-        "🟢 <code>/maintenance_off</code> | 📌 <code>/setpin [on/off]</code>\n"
-        "🚫 <code>/ban [ID]</code> | ✅ <code>/unban [ID]</code>\n\n"
-        "🎛 <b>Smart Mode Switch:</b>\n"
-        "🔀 <code>/switchmode [on/off]</code> - Toggle Code Mode\n"
-        "🔗 <code>/setlink [URL]</code> - App Button Link\n"
-        "🖼 <code>/setsuccessphoto [URL]</code> - Success Mode Photo\n\n"
-        "🔘 <b>Buttons Control:</b>\n"
-        "➕ <code>/addbutton [Num] [Naam] | [Link]</code>\n"
-        "➖ <code>/delbutton [Num]</code>\n\n"
-        "📝 <b>Texts Control:</b>\n"
-        "⏳ <code>/setprocesstext [text]</code>\n"
-        "⚠️ <code>/seterrortext [text]</code>\n"
-        "📝 <code>/settext [text]</code> | 🖼 <code>/setphoto [url]</code>\n"
-        "🎁 <code>/setcode [code]</code>"
+    panel_text = (
+"⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
+"📊 <code>/stats</code> | 📈 <code>/clickstats</code>\n"
+"💾 <code>/export</code> | 🔴 <code>/maintenance_on</code>\n"
+"🟢 <code>/maintenance_off</code> | 📌 <code>/setpin [on/off]</code>\n"
+"🚫 <code>/ban [ID]</code> | ✅ <code>/unban [ID]</code>\n\n"
+"🎛 <b>Smart Mode Switch:</b>\n"
+"🔀 <code>/switchmode [on/off]</code> - Toggle Code Mode\n"
+"🔗 <code>/setlink [URL]</code> - App Button Link\n"
+"🖼 <code>/setsuccessphoto [URL]</code> - Success Mode Photo\n\n"
+"🔘 <b>Buttons Control:</b>\n"
+"➕ <code>/addbutton [Num] [Naam] | [Link]</code>\n"
+"➖ <code>/delbutton [Num]</code>\n\n"
+"📝 <b>Texts Control:</b>\n"
+"⏳ <code>/setprocesstext [text]</code>\n"
+"⚠️ <code>/seterrortext [text]</code>\n"
+"📝 <code>/settext [text]</code> | 🖼 <code>/setphoto [url]</code>\n"
+"🎁 <code>/setcode [code]</code>"
     )
     bot.send_message(message.chat.id, panel_text, parse_mode='HTML')
+
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -504,7 +521,7 @@ def handle_start(message):
         return
     send_welcome(message)
 
-# --- 🎯 ORIGINAL WELCOME FUNCTION (DIRECT URL CHANNELS LINK) ---
+
 def send_welcome(message):
     save_user(message.chat.id)
     settings = load_settings()
@@ -513,7 +530,6 @@ def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
     row_btns = []
     
-    # 4 Buttons Fix: Ab click karne par channels freeze nahi honge seedha open honge
     for i, btn in enumerate(buttons):
         row_btns.append(types.InlineKeyboardButton(btn["text"], url=btn["url"]))
         if len(row_btns) == 2:
@@ -527,7 +543,7 @@ def send_welcome(message):
     try: bot.send_photo(message.chat.id, settings.get("image"), caption=settings.get("text"), reply_markup=markup, parse_mode='HTML')
     except: bot.send_message(message.chat.id, settings.get("text"), reply_markup=markup, parse_mode='HTML')
 
-# --- CALLBACK HANDLER ---
+
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     global cancel_broadcast_flag
@@ -535,7 +551,6 @@ def callback_query(call):
     clicks = load_clicks()
     user_id = call.message.chat.id
     
-    # Cancel button logic
     if call.data == "cancel_broadcast":
         if call.from_user.id == ADMIN_ID:
             cancel_broadcast_flag = True
@@ -581,7 +596,8 @@ def callback_query(call):
         save_clicks(clicks)
         bot.answer_callback_query(call.id, url=settings.get("reg_link"))
 
+
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
-
+    
