@@ -230,11 +230,9 @@ def handle_bot_direct_broadcast(message):
         f"⚠️ Failed/Error: {failed_count} users\n\n"
         f"📊 Remaining Active Users: {remaining_users}"
     )
-
-    if cancel_broadcast_flag:
-        report_text = "🛑 <b>Broadcast Cancelled by Admin!</b>\n\n" + report_text
-
-
+    logs = load_msg_log()
+    logs[str(message.message_id)] = sent_msg_ids
+    save_msg_log(logs)
 # --- ADMIN COMMANDS HANDLERS ---
 @bot.message_handler(commands=['switchmode'])
 def toggle_success_mode(message):
