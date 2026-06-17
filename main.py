@@ -136,72 +136,6 @@ def load_clicks():
 def save_clicks(data):
     with open(CLICK_FILE, "w") as f: json.dump(data, f)
 
-# --- 🎯 FIXED CHANNEL POST HANDLER (AUTO REGISTER LINK CODES) ---
-@bot.channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
-def handle_channel_post(message):
-    if message.chat.id == CONNECTED_CHANNEL:
-        users = get_users()
-        sent_msg_ids = []
-        
-        # Message text ya caption nikaalna
-        msg_text = message.text if message.text else message.caption
-        if not msg_text:
-            msg_text = ""
-
-        # Regular Expression se text ke andar se pehla URL (link) dhundhna
-        urls = re.findall(r'(https?://\S+)', msg_text)
-        
-        # Default link settings se uthayega agar text mein koi link na mila toh
-        settings = load_settings()
-        extracted_url = urls[0] if urls else settings.get("reg_link")
-
-        # Dynamic Register Button bana rahe hain extracted link ke saath
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("Register Link", url=extracted_url))
-
-        for user_id in users:
-            try:
-                # Agar photo hai toh photo copy karke bhejo inline button ke saath
-                if message.content_type == 'photo':
-                    sent_msg = bot.send_photo(chat_id=user_id, photo=message.photo[-1].file_id, caption=message.caption, reply_markup=markup, parse_mode='HTML')
-                # Agar sirf text hai toh text bhejo inline button ke saath
-                elif message.content_type == 'text':
-                    sent_msg = bot.send_message(chat_id=user_id, text=message.text, reply_markup=markup, parse_mode='HTML')
-                else:
-                    # Baaki files ke liye purana forward logic safe side ke liye
-                    sent_msg = bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
-                
-                sent_msg_ids.append({"user_id": user_id, "msg_id": sent_msg.message_id})
-            except: pass
-            
-        logs = load_msg_log()
-        logs[str(message.message_id)] = sent_msg_ids
-        save_msg_log(logs)
-
-@bot.edited_channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
-def handle_edited_channel_post(message):
-    if message.chat.id == CONNECTED_CHANNEL:
-        logs = load_msg_log()
-        ch_msg_id = str(message.message_id)
-        if ch_msg_id in logs:
-            msg_text = message.text if message.text else message.caption
-            if not msg_text: msg_text = ""
-            
-            urls = re.findall(r'(https?://\S+)', msg_text)
-            settings = load_settings()
-            extracted_url = urls[0] if urls else settings.get("reg_link")
-            
-            markup = types.InlineKeyboardMarkup()
-            markup.add(types.InlineKeyboardButton("Register Link", url=extracted_url))
-            
-            for target in logs[ch_msg_id]:
-                try:
-                    if message.text:
-                        bot.edit_message_text(text=message.text, chat_id=target["user_id"], message_id=target["msg_id"], reply_markup=markup, parse_mode='HTML')
-                    elif message.caption:
-                        bot.edit_message_caption(caption=message.caption, chat_id=target["user_id"], message_id=target["msg_id"], reply_markup=markup, parse_mode='HTML')
-                except: pass
-
 # --- ADMIN COMMANDS HANDLERS ---
 @bot.message_handler(commands=['switchmode'])
 def toggle_success_mode(message):
@@ -213,7 +147,109 @@ def toggle_success_mode(message):
             settings["success_mode"] = True
             msg = "🟢 <b>Success Mode: ON</b> (Ab timer ke baad Photo + Promo Code + Register Button dikhega!)"
         else:
-            settings["success_mode"] = False
+            settings["su# --- 🎯 ORIGINAL LIVE BROADCAST SYSTEM WITH DELIVERY REPORT & CANCEL BUTTON ---
+@bot.channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
+def handle_channel_post(message):
+    global cancel_broadcast_flag
+    
+    if message.chat.id != CONNECTED_CHANNEL:
+        return
+
+    users = get_users()
+    total_users = len(users)
+    sent_msg_ids = []
+    
+    success_count = 0
+    blocked_count = 0
+    failed_count = 0
+    
+    cancel_broadcast_flag = False
+
+    # 1. Admin ko sabse pehle shuruat ka status message bhejna
+    status_markup = types.InlineKeyboardMarkup()
+    status_markup.add(types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast"))
+    
+    try:
+        status_msg = bot.send_message(
+            chat_id=ADMIN_ID, 
+            text=f"🚀 <b>{total_users} users ko broadcast shuru...</b>", 
+            reply_markup=status_markup, 
+            parse_mode='HTML'
+        )
+    except:
+        status_msg = None
+
+    # 2. Sabhi users ko loop chala kar message copy/forward karna
+    for index, user_id in enumerate(users):
+        if cancel_broadcast_flag:
+            break
+            
+        try:
+            # Puraane system ki tarah same to same exact copy forward karega
+            sent_msg = bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
+            sent_msg_ids.append({"user_id": user_id, "msg_id": sent_msg.message_id})
+            success_count += 1
+        except telebot.api_helper.ApiTelegramException as e:
+            if e.error_code == 403:
+                blocked_count += 1
+            else:
+                failed_count += 1
+        except:
+            failed_count += 1
+
+        # Har 10 users ke baad admin ka loading status update karega (Live counting)
+        if status_msg and index % 10 == 0:
+            try:
+                bot.edit_message_text(
+                    chat_id=ADMIN_ID,
+                    message_id=status_msg.message_id,
+                    text=f"🚀 <b>Broadcast in progress... ({success_count}/{total_users})</b>",
+                    reply_markup=status_markup,
+                    parse_mode='HTML'
+                )
+            except: pass
+
+    # 3. Puraane system jaisi same to same BROADCAST DELIVERY REPORT taiyar karna
+    remaining_users = total_users - (success_count + blocked_count + failed_count)
+    
+    report_text = (
+        "📢 <b>BROADCAST DELIVERY REPORT</b>\n\n"
+        f"✅ Successfully Sent: <b>{success_count} users</b>\n"
+        f"❌ Blocked/Kicked: <b>{blocked_count} users</b>\n"
+        f"⚠️ Failed/Error: <b>{failed_count} users</b>\n\n"
+        f"📊 Remaining Active Users: <b>{remaining_users}</b>"
+    )
+
+    if cancel_broadcast_flag:
+        report_text = "🛑 <b>Broadcast Cancelled by Admin!</b>\n\n" + report_text
+
+    # Admin ko final delivery report message bhejna
+    try:
+        if status_msg:
+            bot.delete_message(chat_id=ADMIN_ID, message_id=status_msg.message_id)
+        bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='HTML')
+    except:
+        bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='HTML')
+
+    # Logs ko save karna taaki edit post bhi kaam kare
+    logs = load_msg_log()
+    logs[str(message.message_id)] = sent_msg_ids
+    save_msg_log(logs)
+
+@bot.edited_channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
+def handle_edited_channel_post(message):
+    if message.chat.id == CONNECTED_CHANNEL:
+        logs = load_msg_log()
+        ch_msg_id = str(message.message_id)
+        if ch_msg_id in logs:
+            for target in logs[ch_msg_id]:
+                try:
+                    if message.text:
+                        bot.edit_message_text(text=message.text, chat_id=target["user_id"], message_id=target["msg_id"], parse_mode='HTML')
+                    elif message.caption:
+                        bot.edit_message_caption(caption=message.caption, chat_id=target["user_id"], message_id=target["msg_id"], parse_mode='HTML')
+                except: pass
+ccess_mode"] = False
             msg = "🔴 <b>Success Mode: OFF</b> (Ab timer ke baad purana Error text hi dikhega!)"
         save_settings(settings)
         bot.reply_to(message, msg, parse_mode='HTML')
@@ -494,12 +530,22 @@ def send_welcome(message):
     except: bot.send_message(message.chat.id, settings.get("text"), reply_markup=markup, parse_mode='HTML')
 
 # --- CALLBACK HANDLER ---
-@bot.callback_query_handler(func=lambda call: call.data != "cancel_broadcast")
+@bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
+    global cancel_broadcast_flag
     settings = load_settings()
     clicks = load_clicks()
     user_id = call.message.chat.id
     
+    # Cancel broadcast button logic
+    if call.data == "cancel_broadcast":
+        if call.from_user.id == ADMIN_ID:
+            cancel_broadcast_flag = True
+            bot.answer_callback_query(call.id, "🛑 Cancelling Broadcast...")
+        else:
+            bot.answer_callback_query(call.id, "❌ Aap admin nahi hain!", show_alert=True)
+        return
+
     if call.data == "claim_code":
         clicks["claim_btn_click"] = clicks.get("claim_btn_click", 0) + 1
         save_clicks(clicks)
@@ -507,12 +553,9 @@ def callback_query(call):
         bot.answer_callback_query(call.id, "⏳ Verifying your channels...")
         proc_msg = bot.send_message(user_id, settings.get("process_text"), parse_mode='HTML')
         
-        # 5 Second ka pause
         time.sleep(5)
         
-        # CHOOSE MODE
         if settings.get("success_mode", False):
-            # SUCCESS MODE ON: Photo + Text + Direct Link Button
             success_markup = types.InlineKeyboardMarkup()
             success_markup.add(types.InlineKeyboardButton("🔗 Register/Claim Button", url=settings.get("reg_link")))
             
@@ -522,12 +565,10 @@ def callback_query(call):
                 "👇 <b>Click below to claim:</b>"
             )
             try:
-                # Purana text wala processing message delete karega taaki photo ke sath naya bhej sake
                 bot.delete_message(chat_id=user_id, message_id=proc_msg.message_id)
                 bot.send_photo(chat_id=user_id, photo=settings.get("success_image"), caption=success_text, reply_markup=success_markup, parse_mode='HTML')
             except: pass
         else:
-            # SUCCESS MODE OFF: Aapka bataya purana error text hi dikhega
             try:
                 bot.edit_message_text(text=settings.get("error_text"), chat_id=user_id, message_id=proc_msg.message_id, parse_mode='HTML')
             except: pass
