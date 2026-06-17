@@ -81,7 +81,8 @@ def load_settings():
 
     with open(SETTINGS_FILE, "w") as f: json.dump(default, f)
     return default
-    def save_settings(data):
+
+def save_settings(data):
     with open(SETTINGS_FILE, "w") as f: json.dump(data, f)
 
 def get_users():
@@ -233,7 +234,8 @@ def handle_bot_direct_broadcast(message):
     logs = load_msg_log()
     logs[str(message.message_id)] = sent_msg_ids
     save_msg_log(logs)
-    # --- ADMIN COMMANDS HANDLERS ---
+
+# --- ADMIN COMMANDS HANDLERS ---
 @bot.message_handler(commands=['switchmode'])
 def toggle_success_mode(message):
     if message.from_user.id != ADMIN_ID: return
@@ -366,7 +368,8 @@ def unban_user_command(message):
         bot.reply_to(message, f"✅ User <code>{target_id}</code> UNBAN ho gaya!", parse_mode='HTML')
     except:
         bot.reply_to(message, "❌ Use: `/unban ID`")
-    @bot.message_handler(commands=['addbutton'])
+
+@bot.message_handler(commands=['addbutton'])
 def add_button_command(message):
     if message.from_user.id != ADMIN_ID: return
     try:
@@ -583,4 +586,3 @@ def callback_query(call):
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
-        
