@@ -129,6 +129,107 @@ def save_msg_log(data):
     with open(MSG_LOG_FILE, "w") as f: json.dump(data, f)
 
 def load_clicks():
+# --- 🎯 DIRECT BOT & FORWARD BROADCAST SYSTEM (WITH AUTO LINK BUTTON) ---
+@bot.message_handler(func=lambda msg: msg.chat.id == ADMIN_ID and (not msg.text.startswith('/') if msg.text else True), content_types=['text', 'photo', 'video', 'document', 'animation'])
+def handle_bot_direct_broadcast(message):
+    global cancel_broadcast_flag
+    
+    users = get_users()
+    total_users = len(users)
+    sent_msg_ids = []
+    
+    success_count = 0
+    blocked_count = 0
+    failed_count = 0
+    
+    cancel_broadcast_flag = False
+
+    # Text ya Caption se first link nikalna button ke liye
+    msg_text = message.text if message.text else message.caption
+    urls = re.findall(r'(https?://\S+)', msg_text) if msg_text else []
+    settings = load_settings()
+    extracted_url = urls[0] if urls else settings.get("reg_link")
+
+    # Post ke niche dynamic link button jodna
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔗 Register Link", url=extracted_url))
+
+    # Exact image jaisa cancel button status message
+    status_markup = types.InlineKeyboardMarkup()
+    status_markup.add(types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast"))
+    
+    try:
+        status_msg = bot.send_message(
+            chat_id=ADMIN_ID, 
+            text=f"🚀 <b>{total_users} users ko broadcast shuru...</b>", 
+            reply_markup=status_markup, 
+            parse_mode='HTML'
+        )
+    except:
+        status_msg = None
+
+    for index, user_id in enumerate(users):
+        if cancel_broadcast_flag:
+            break
+            
+        try:
+            if message.content_type == 'photo':
+                sent_msg = bot.send_photo(chat_id=user_id, photo=message.photo[-1].file_id, caption=message.caption, reply_markup=markup, parse_mode='HTML')
+            elif message.content_type == 'text':
+                sent_msg = bot.send_message(chat_id=user_id, text=message.text, reply_markup=markup, parse_mode='HTML')
+            else:
+                sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
+                
+            sent_msg_ids.append({"user_id": user_id, "msg_id": sent_msg.message_id})
+            success_count += 1
+        except telebot.api_helper.ApiTelegramException as e:
+            if e.error_code == 403:
+                blocked_count += 1
+                if user_id in users:
+                    users.remove(user_id)
+            else:
+                failed_count += 1
+        except:
+            failed_count += 1
+
+        if status_msg and index % 10 == 0:
+            try:
+                bot.edit_message_text(
+                    chat_id=ADMIN_ID,
+                    message_id=status_msg.message_id,
+                    text=f"🚀 <b>Broadcast in progress... ({success_count}/{total_users})</b>",
+                    reply_markup=status_markup,
+                    parse_mode='HTML'
+                )
+            except: pass
+
+    if blocked_count > 0:
+        save_users_list(users)
+
+    remaining_users = total_users - (success_count + blocked_count + failed_count)
+    
+    # Exact image jaisa design report format
+    report_text = (
+        "📢 <b>BROADCAST DELIVERY REPORT</b>\n\n"
+        f"✅ Successfully Sent: {success_count} users\n"
+        f"❌ Blocked/Kicked: {blocked_count} users (Database cleaned)\n"
+        f"⚠️ Failed/Error: {failed_count} users\n\n"
+        f"📊 Remaining Active Users: {remaining_users}"
+    )
+
+    if cancel_broadcast_flag:
+        report_text = "🛑 <b>Broadcast Cancelled by Admin!</b>\n\n" + report_text
+
+    try:
+        if status_msg:
+            bot.delete_message(chat_id=ADMIN_ID, message_id=status_msg.message_id)
+        bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='HTML')
+    except:
+        bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='HTML')
+
+    logs = load_msg_log()
+    logs[str(message.message_id)] = sent_msg_ids
+    save_msg_log(logs)
     try:
         with open(CLICK_FILE, "r") as f: return json.load(f)
     except: return {}
@@ -155,84 +256,6 @@ def handle_channel_post(message):
     
     cancel_broadcast_flag = False
 
-    status_markup = types.InlineKeyboardMarkup()
-    status_markup.add(types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast"))
-    
-    try:
-        status_msg = bot.send_message(
-            chat_id=ADMIN_ID, 
-            text=f"🚀 <b>{total_users} users ko broadcast shuru...</b>", 
-            reply_markup=status_markup, 
-            parse_mode='HTML'
-        )
-    except:
-        status_msg = None
-
-    for index, user_id in enumerate(users):
-        if cancel_broadcast_flag:
-            break
-            
-        try:
-            sent_msg = bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
-            sent_msg_ids.append({"user_id": user_id, "msg_id": sent_msg.message_id})
-            success_count += 1
-        except telebot.api_helper.ApiTelegramException as e:
-            if e.error_code == 403:
-                blocked_count += 1
-            else:
-                failed_count += 1
-        except:
-            failed_count += 1
-
-        if status_msg and index % 10 == 0:
-            try:
-                bot.edit_message_text(
-                    chat_id=ADMIN_ID,
-                    message_id=status_msg.message_id,
-                    text=f"🚀 <b>Broadcast in progress... ({success_count}/{total_users})</b>",
-                    reply_markup=status_markup,
-                    parse_mode='HTML'
-                )
-            except: pass
-
-        remaining_users = total_users - (success_count + blocked_count + failed_count)
-    
-    report_text = (
-        "📢 <b>BROADCAST DELIVERY REPORT</b>\n\n"
-        f"✅ Successfully Sent: <b>{success_count} users</b>\n"
-        f"❌ Blocked/Kicked: <b>{blocked_count} users</b>\n"
-        f"⚠️ Failed/Error: <b>{failed_count} users</b>\n\n"
-        f"📊 Remaining Active Users: <b>{remaining_users}</b>"
-    )
-
-    if cancel_broadcast_flag:
-        report_text = "🛑 <b>Broadcast Cancelled by Admin!</b>\n\n" + report_text
-
-    try:
-        if status_msg:
-            bot.delete_message(chat_id=ADMIN_ID, message_id=status_msg.message_id)
-        bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='HTML')
-    except:
-        bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='HTML')
-
-    logs = load_msg_log()
-    logs[str(message.message_id)] = sent_msg_ids
-    save_msg_log(logs)
-
-
-@bot.edited_channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
-def handle_edited_channel_post(message):
-    if message.chat.id == CONNECTED_CHANNEL:
-        logs = load_msg_log()
-        ch_msg_id = str(message.message_id)
-        if ch_msg_id in logs:
-            for target in logs[ch_msg_id]:
-                try:
-                    if message.text:
-                        bot.edit_message_text(text=message.text, chat_id=target["user_id"], message_id=target["msg_id"], parse_mode='HTML')
-                    elif message.caption:
-                        bot.edit_message_caption(caption=message.caption, chat_id=target["user_id"], message_id=target["msg_id"], parse_mode='HTML')
-                except: pass
 # --- ADMIN COMMANDS HANDLERS ---
 @bot.message_handler(commands=['switchmode'])
 def toggle_success_mode(message):
