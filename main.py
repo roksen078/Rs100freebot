@@ -135,19 +135,7 @@ def load_clicks():
 
 def save_clicks(data):
     with open(CLICK_FILE, "w") as f: json.dump(data, f)
-
-# --- ADMIN COMMANDS HANDLERS ---
-@bot.message_handler(commands=['switchmode'])
-def toggle_success_mode(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        opt = message.text.split(maxsplit=1)[1].strip().lower()
-        settings = load_settings()
-        if opt == 'on':
-            settings["success_mode"] = True
-            msg = "🟢 <b>Success Mode: ON</b> (Ab timer ke baad Photo + Promo Code + Register Button dikhega!)"
-        else:
-            settings["su# --- 🎯 ORIGINAL LIVE BROADCAST SYSTEM WITH DELIVERY REPORT & CANCEL BUTTON ---
+                  # --- 🎯 ORIGINAL LIVE BROADCAST SYSTEM WITH DELIVERY REPORT & CANCEL BUTTON ---
 @bot.channel_post_handler(content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_channel_post(message):
     global cancel_broadcast_flag
@@ -185,7 +173,6 @@ def handle_channel_post(message):
             break
             
         try:
-            # Puraane system ki tarah same to same exact copy forward karega
             sent_msg = bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
             sent_msg_ids.append({"user_id": user_id, "msg_id": sent_msg.message_id})
             success_count += 1
@@ -197,7 +184,7 @@ def handle_channel_post(message):
         except:
             failed_count += 1
 
-        # Har 10 users ke baad admin ka loading status update karega (Live counting)
+        # Har 10 users ke baad admin ka loading status update karega
         if status_msg and index % 10 == 0:
             try:
                 bot.edit_message_text(
@@ -223,7 +210,6 @@ def handle_channel_post(message):
     if cancel_broadcast_flag:
         report_text = "🛑 <b>Broadcast Cancelled by Admin!</b>\n\n" + report_text
 
-    # Admin ko final delivery report message bhejna
     try:
         if status_msg:
             bot.delete_message(chat_id=ADMIN_ID, message_id=status_msg.message_id)
@@ -231,7 +217,6 @@ def handle_channel_post(message):
     except:
         bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='HTML')
 
-    # Logs ko save karna taaki edit post bhi kaam kare
     logs = load_msg_log()
     logs[str(message.message_id)] = sent_msg_ids
     save_msg_log(logs)
@@ -249,7 +234,18 @@ def handle_edited_channel_post(message):
                     elif message.caption:
                         bot.edit_message_caption(caption=message.caption, chat_id=target["user_id"], message_id=target["msg_id"], parse_mode='HTML')
                 except: pass
-ccess_mode"] = False
+                    # --- ADMIN COMMANDS HANDLERS ---
+@bot.message_handler(commands=['switchmode'])
+def toggle_success_mode(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        opt = message.text.split(maxsplit=1)[1].strip().lower()
+        settings = load_settings()
+        if opt == 'on':
+            settings["success_mode"] = True
+            msg = "🟢 <b>Success Mode: ON</b> (Ab timer ke baad Photo + Promo Code + Register Button dikhega!)"
+        else:
+            settings["success_mode"] = False
             msg = "🔴 <b>Success Mode: OFF</b> (Ab timer ke baad purana Error text hi dikhega!)"
         save_settings(settings)
         bot.reply_to(message, msg, parse_mode='HTML')
@@ -291,7 +287,7 @@ def show_click_stats(message):
     for i, btn in enumerate(buttons):
         btn_id = f"btn_{i}"
         count = clicks.get(btn_id, 0)
-        report += f"🔘 Button {i+1}: <b>{btn['text']}</b>\n🎯 Total Clicks: <code>{count}</code>\n\n"
+        report += f"🔘 Button {i+1}: <b>{btn['text']}</b>\nTotal Clicks: <code>{count}</code>\n\n"
         
     bc_count = clicks.get("broadcast_reg", 0)
     claim_count = clicks.get("claim_btn_click", 0)
@@ -473,8 +469,7 @@ def change_code(message):
         save_settings(settings)
         bot.reply_to(message, f"🎁 Code badal kar <b>{new_code}</b> ho gaya!", parse_mode='HTML')
     except: bot.reply_to(message, "❌ Format galat hai.")
-
-@bot.message_handler(commands=['admin'])
+                     @bot.message_handler(commands=['admin'])
 def admin_panel(message):
     if message.from_user.id != ADMIN_ID: return
     panel_text = (
@@ -506,7 +501,7 @@ def handle_start(message):
         return
     send_welcome(message)
 
-# --- 🎯 FIXED WELCOME FUNCTION (DIRECT URL CHANNELS LINK) ---
+# --- 🎯 ORIGINAL WELCOME FUNCTION (DIRECT URL CHANNELS LINK) ---
 def send_welcome(message):
     save_user(message.chat.id)
     settings = load_settings()
@@ -515,7 +510,7 @@ def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
     row_btns = []
     
-    # Yahan callback_data hata kar direct url=btn["url"] lagaya gaya hai
+    # 4 Buttons Fix: Ab click karne par channels freeze nahi honge seedha open honge
     for i, btn in enumerate(buttons):
         row_btns.append(types.InlineKeyboardButton(btn["text"], url=btn["url"]))
         if len(row_btns) == 2:
@@ -537,7 +532,7 @@ def callback_query(call):
     clicks = load_clicks()
     user_id = call.message.chat.id
     
-    # Cancel broadcast button logic
+    # Cancel button logic
     if call.data == "cancel_broadcast":
         if call.from_user.id == ADMIN_ID:
             cancel_broadcast_flag = True
@@ -586,3 +581,4 @@ def callback_query(call):
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling()
+
