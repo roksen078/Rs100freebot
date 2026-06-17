@@ -468,11 +468,14 @@ def change_code(message):
         settings["code"] = new_code
         save_settings(settings)
         bot.reply_to(message, f"🎁 Code badal kar <b>{new_code}</b> ho gaya!", parse_mode='HTML')
-    except: bot.reply_to(message, "❌ Format galat hai.")
-                     @bot.message_handler(commands=['admin'])
+    except:
+        bot.reply_to(message, "❌ Format galat hai.")
+
+
+@bot.message_handler(commands=['admin'])
 def admin_panel(message):
     if message.from_user.id != ADMIN_ID: return
-    panel_text = (
+
         "⚙️ <b>ADMIN CONTROL PANEL</b>\n\n"
         "📊 <code>/stats</code> | 📈 <code>/clickstats</code>\n"
         "💾 <code>/export</code> | 🔴 <code>/maintenance_on</code>\n"
