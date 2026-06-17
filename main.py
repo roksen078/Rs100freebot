@@ -116,11 +116,7 @@ def ban_user_id(user_id):
 
 def unban_user_id(user_id):
     banned = get_banned_users()
-    if user_id in banned:
-        banned.remove(user_id)
-        with open(BAN_FILE, "w") as f: json.dump(banned, f)
-
-def load_msg_log():
+    if user_id idef load_msg_log():
     try:
         with open(MSG_LOG_FILE, "r") as f: return json.load(f)
     except: return {}
@@ -129,6 +125,14 @@ def save_msg_log(data):
     with open(MSG_LOG_FILE, "w") as f: json.dump(data, f)
 
 def load_clicks():
+    try:
+        with open(CLICK_FILE, "r") as f: return json.load(f)
+    except: return {}
+
+def save_clicks(data):
+    with open(CLICK_FILE, "w") as f: json.dump(data, f)
+
+
 # --- 🎯 DIRECT BOT & FORWARD BROADCAST SYSTEM (WITH AUTO LINK BUTTON) ---
 @bot.message_handler(func=lambda msg: msg.chat.id == ADMIN_ID and (not msg.text.startswith('/') if msg.text else True), content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_bot_direct_broadcast(message):
@@ -230,12 +234,11 @@ def handle_bot_direct_broadcast(message):
     logs = load_msg_log()
     logs[str(message.message_id)] = sent_msg_ids
     save_msg_log(logs)
-    try:
-        with open(CLICK_FILE, "r") as f: return json.load(f)
-    except: return {}
+n banned:
+        banned.remove(user_id)
+        with open(BAN_FILE, "w") as f: json.dump(banned, f)
 
-def save_clicks(data):
-    with open(CLICK_FILE, "w") as f: json.dump(data, f)
+
 
 
 # --- 🎯 ORIGINAL LIVE BROADCAST SYSTEM WITH DELIVERY REPORT & CANCEL BUTTON ---
