@@ -123,21 +123,7 @@ def unban_user_id(user_id):
 def load_msg_log():
     try:
         with open(MSG_LOG_FILE, "r") as f: return json.load(f)
-    except: return {}
-
-def save_msg_log(data):
-    with open(MSG_LOG_FILE, "w") as f: json.dump(data, f)
-
-def load_clicks():
-    try:
-        with open(CLICK_FILE, "r") as f: return json.load(f)
-    except: return {}
-
-def save_clicks(data):
-    with open(CLICK_FILE, "w") as f: json.dump(data, f)
-
-
-# --- 🎯 DIRECT BOT & FORWARD BROADCAST SYSTEM (WITH AUTO LINK BUTTON) ---
+# --- 🎯 DIRECT BOT & FORWARD BROADCAST SYSTEM (WITH CONDITIONAL BUTTON & AUTO-PIN) ---
 @bot.message_handler(func=lambda msg: msg.chat.id == ADMIN_ID and (not msg.text.startswith('/') if msg.text else True), content_types=['text', 'photo', 'video', 'document', 'animation'])
 def handle_bot_direct_broadcast(message):
     global cancel_broadcast_flag
@@ -152,13 +138,16 @@ def handle_bot_direct_broadcast(message):
     
     cancel_broadcast_flag = False
 
+    # Check if the post has any links
     msg_text = message.text if message.text else message.caption
     urls = re.findall(r'(https?://\S+)', msg_text) if msg_text else []
-    settings = load_settings()
-    extracted_url = urls[0] if urls else settings.get("reg_link")
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🔗 Register Link", url=extracted_url))
+    
+    markup = None
+    # Register button sirf tabhi aayega jab message mein link milega
+    if urls:
+        first_url = urls[0]
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("🔗 Register Link", url=first_url))
 
     status_markup = types.InlineKeyboardMarkup()
     status_markup.add(types.InlineKeyboardButton("❌ Cancel Broadcast", callback_data="cancel_broadcast"))
@@ -173,20 +162,41 @@ def handle_bot_direct_broadcast(message):
     except:
         status_msg = None
 
+    # Determine if it's a forwarded message
+    is_forwarded = message.forward_from or message.forward_from_chat or message.forward_date
+
     for index, user_id in enumerate(users):
         if cancel_broadcast_flag:
             break
             
         try:
-            if message.content_type == 'photo':
-                sent_msg = bot.send_photo(chat_id=user_id, photo=message.photo[-1].file_id, caption=message.caption, reply_markup=markup, parse_mode='HTML')
-            elif message.content_type == 'text':
-                sent_msg = bot.send_message(chat_id=user_id, text=message.text, reply_markup=markup, parse_mode='HTML')
+            # Agar message forward kiya hua hai, toh forward hi jayega header ke sath
+            if is_forwarded:
+                sent_msg = bot.forward_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id)
+                if markup:
+                    try: bot.delete_message(chat_id=user_id, message_id=sent_msg.message_id)
+                    except: pass
+                    sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
             else:
-                sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
+                # Agar normal message hai bina forward ke
+                if message.content_type == 'photo':
+                    sent_msg = bot.send_photo(chat_id=user_id, photo=message.photo[-1].file_id, caption=message.caption, reply_markup=markup, parse_mode='HTML')
+                elif message.content_type == 'text':
+                    sent_msg = bot.send_message(chat_id=user_id, text=message.text, reply_markup=markup, parse_mode='HTML')
+                else:
+                    sent_msg = bot.copy_message(chat_id=user_id, from_chat_id=message.chat.id, message_id=message.message_id, reply_markup=markup)
                 
             sent_msg_ids.append({"user_id": user_id, "msg_id": sent_msg.message_id})
             success_count += 1
+            
+            # --- 📌 AUTO UNPIN PURANA & PIN NAYA SYSTEM ---
+            settings = load_settings()
+            if settings.get("auto_pin", True):
+                try: bot.unpin_chat_message(chat_id=user_id, message_id=None)
+                except: pass
+                try: bot.pin_chat_message(chat_id=user_id, message_id=sent_msg.message_id, disable_notification=True)
+                except: pass
+                
         except telebot.api_helper.ApiTelegramException as e:
             if e.error_code == 403:
                 blocked_count += 1
@@ -224,16 +234,6 @@ def handle_bot_direct_broadcast(message):
     if cancel_broadcast_flag:
         report_text = "🛑 <b>Broadcast Cancelled by Admin!</b>\n\n" + report_text
 
-    try:
-        if status_msg:
-            bot.delete_message(chat_id=ADMIN_ID, message_id=status_msg.message_id)
-        bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='HTML')
-    except:
-        bot.send_message(chat_id=ADMIN_ID, text=report_text, parse_mode='HTML')
-
-    logs = load_msg_log()
-    logs[str(message.message_id)] = sent_msg_ids
-    save_msg_log(logs)
 
 # --- ADMIN COMMANDS HANDLERS ---
 @bot.message_handler(commands=['switchmode'])
@@ -247,7 +247,10 @@ def toggle_success_mode(message):
             msg = "🟢 <b>Success Mode: ON</b> (Ab timer ke baad Photo + Promo Code + Register Button dikhega!)"
         else:
             settings["success_mode"] = False
-            msg = "🔴 <b>Success Mode: OFF</b> (Ab timer ke baad purana Error text hi dikhega!)"
+            msg = "🔴 <b>Success    logs = load_msg_log()
+    logs[str(message.message_id)] = sent_msg_ids
+    save_msg_log(logs)
+ Mode: OFF</b> (Ab timer ke baad purana Error text hi dikhega!)"
         save_settings(settings)
         bot.reply_to(message, msg, parse_mode='HTML')
     except:
