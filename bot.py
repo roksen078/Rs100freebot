@@ -25,6 +25,7 @@ DEFAULT_SETTINGS = {
     "broadcast_btn_text": "👉 Register Now", 
     "verification_delay_enabled": True, 
     "verification_text": "⏳ Processing your request... Please wait 5 seconds.", 
+    "error_text": "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\nKripaya upar diye gaye channels join karein.\n\n📌 <b>Zaruri:</b> Channels ko Pin karke rakho, tabhi code milega!",
     "custom_buttons": [
         {"text": "🚀 Claim ₹500", "url": "https://t.me/telegram"},
         {"text": "🎁 Unlock Code", "url": "https://t.me/telegram"},
@@ -35,7 +36,7 @@ DEFAULT_SETTINGS = {
     "url_clicks": 0
 }
 
-# --- UNIFIED JSON DATABASE UTILITIES (CRASH-PROOF MODE) ---
+# --- UNIFIED JSON DATABASE UTILITIES (CRASH-PROOF HARD HARD PROTECTION) ---
 def load_system_data():
     if os.path.exists(DB_FILE):
         try:
@@ -53,19 +54,31 @@ def save_system_data(data):
     with db_lock:  # Multi-threading lock protection active
         try:
             data_copy = data.copy()
-            if "users" in data_copy and isinstance(data_copy["users"], set):
-                data_copy["users"] = list(data_copy["users"])
+            # Force conversion to list before JSON dumps to avoid type errors
+            if "users" in data_copy:
+                if isinstance(data_copy["users"], set):
+                    data_copy["users"] = list(data_copy["users"])
+                elif not isinstance(data_copy["users"], list):
+                    data_copy["users"] = []
             with open(DB_FILE, "w") as f:
                 json.dump(data_copy, f, indent=4)
         except Exception as e:
             print(f"Database core structural save failure error: {e}")
 
 sys_db = load_system_data()
-if isinstance(sys_db["users"], list):
+
+# Strictly verify and lock 'users' as a set in system memory to avoid .add() error
+if "users" not in sys_db or not isinstance(sys_db["users"], (list, set)):
+    sys_db["users"] = set()
+else:
     sys_db["users"] = set(sys_db["users"])
 
 def save_user_to_db(user_id):
     try:
+        # Extra safety layer: Ensure sys_db['users'] is indeed a set at runtime
+        if not isinstance(sys_db["users"], set):
+            sys_db["users"] = set(sys_db["users"])
+            
         if user_id not in sys_db["users"]:
             sys_db["users"].add(user_id)
             save_system_data(sys_db)
@@ -82,6 +95,7 @@ STATE_ADD_BTN_NAME = "ADD_BTN_NAME"
 STATE_ADD_BTN_URL = "ADD_BTN_URL"
 STATE_EDIT_FREE_BTN = "EDIT_FREE_BTN"
 STATE_EDIT_VERIFY_TEXT = "EDIT_VERIFY_TEXT"
+STATE_EDIT_ERROR_TEXT = "EDIT_ERROR_TEXT"  # New state active
 STATE_UPDATE_CHANNELS = "UPDATE_CHANNELS"
 STATE_BROADCAST_TEXT = "STATE_BROADCAST_TEXT"
 STATE_FORWARD_BROADCAST = "FORWARD_BROADCAST"
@@ -133,6 +147,7 @@ def get_admin_keyboard():
     markup.add(
         KeyboardButton(delay_status),
         KeyboardButton("⏳ Edit Verification Text"),
+        KeyboardButton("📝 Edit Join Error Text"),  # New Admin Button added here
         KeyboardButton("📥 Export Users Data")
     )
     return markup
@@ -200,11 +215,8 @@ def handle_reward_claim(call):
                 except Exception:
                     pass
                 
-                error_msg = (
-                    "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n"
-                    "Kripaya upar diye gaye channels join karein.\n\n"
-                    "📌 <b>Zaruri:</b> Channels ko Pin karke rakho, tabhi code milega!"
-                )
+                # Dynamic error string pulled safely from JSON matrix
+                error_msg = sys_db.get("error_text", "<b>⚠️ Aapne Join Nahi Kiya!</b>")
                 bot.send_message(chat_id, error_msg, parse_mode="HTML")
                 return
 
@@ -222,11 +234,7 @@ def handle_reward_claim(call):
         
     else:
         if not check_user_joined_all(user_id):
-            error_msg = (
-                "<b>⚠️ Aapne Join Nahi Kiya!</b>\n\n"
-                "Kripaya upar diye gaye channels join karein.\n\n"
-                "📌 <b>Zaruri:</b> Channels ko Pin karke rakho, tabhi code milega!"
-            )
+            error_msg = sys_db.get("error_text", "<b>⚠️ Aapne Join Nahi Kiya!</b>")
             bot.send_message(chat_id, error_msg, parse_mode="HTML")
             return
 
@@ -278,6 +286,11 @@ def handle_admin_inputs(message):
     elif text == "⏳ Edit Verification Text":
         admin_states[user_id] = STATE_EDIT_VERIFY_TEXT
         bot.send_message(message.chat.id, f"📥 Send me the new text loader string:\n\n<b>Current:</b> <code>{sys_db.get('verification_text')}</code>", parse_mode="HTML")
+        return
+
+    elif text == "📝 Edit Join Error Text":
+        admin_states[user_id] = STATE_EDIT_ERROR_TEXT
+        bot.send_message(message.chat.id, f"📥 Send me the new HTML Join Error text:\n\n<b>Current:</b>\n{sys_db.get('error_text', 'None')}", parse_mode="HTML")
         return
 
     elif text == "📥 Export Users Data":
@@ -372,8 +385,8 @@ def handle_admin_inputs(message):
         return
 
     elif text == "📝 Broadcast Button Text":
-        admin_states[user_id] = STATE_BROADCAST_TEXT
-        bot.send_message(message.chat.id, f"📥 Send me the text for the broadcast link button:\n\n<b>Current:</b> {sys_db['broadcast_btn_text']}")
+        admin_states[user_id] = STATE_BROADCAST_TEXT  # Perfectly mapped control sequence link
+        bot.send_message(message.chat.id, f"📥 Send me the text for the broadcast link button:\n\n<b>Current:</b> {sys_db.get('broadcast_btn_text', '👉 Register Now')}")
         return
 
     elif text == "🔗 Update Channels":
@@ -385,7 +398,6 @@ def handle_admin_inputs(message):
     if state in [STATE_FORWARD_BROADCAST, STATE_COPY_BROADCAST]:
         admin_states[user_id] = STATE_NONE
         
-        # Taking a thread-safe static snapshot list of users to avoid data race condition
         with db_lock:
             target_users_snapshot = list(sys_db["users"])
             
@@ -449,6 +461,13 @@ def handle_admin_inputs(message):
         save_system_data(sys_db)
         admin_states[user_id] = STATE_NONE
         bot.send_message(message.chat.id, "✅ Verification text customized successfully!", reply_markup=get_admin_keyboard())
+        return
+
+    elif state == STATE_EDIT_ERROR_TEXT:
+        sys_db["error_text"] = text
+        save_system_data(sys_db)
+        admin_states[user_id] = STATE_NONE
+        bot.send_message(message.chat.id, "✅ Join Error Text customized live successfully!", reply_markup=get_admin_keyboard())
         return
 
     elif state == STATE_EDIT_PHOTO:
@@ -517,12 +536,9 @@ def handle_admin_inputs(message):
         bot.send_message(message.chat.id, f"✅ Broadcast link button text changed to: <b>{text}</b>", parse_mode="HTML", reply_markup=get_admin_keyboard())
         return
 
-    elif state == STATE_UPDATE_CHANNELS:
-        ch_list = text.split()
-        sys_db["channels"] = ch_list
-        save_system_data(sys_db)
-        admin_states[user_id] = STATE_NONE
-        bot.send_message(message.chat.id, f"✅ Target authentication channels updated to:\n<code>{', '.join(ch_list)}</code>", parse_mode="HTML", reply_markup=get_admin_keyboard())
+    elif text == "🔗 Update Channels":
+        admin_states[user_id] = STATE_UPDATE_CHANNELS
+        bot.send_message(message.chat.id, "📥 Send channels separated by space (e.g. @ch1 @ch2 @ch3):")
         return
 
 # --- BUTTON MANIPULATION INLINE CALLBACK EXECUTOR ---
