@@ -553,14 +553,22 @@ def handle_inline_callbacks(call):
         admin_states[call.from_user.id] = STATE_EDIT_BTN_URL
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"📥 Send the new direct Redirect URL Link for button <b>{sys_db['custom_buttons'][idx]['text']}</b>:", parse_mode="HTML")
 
-# --- FLASK WEBSERVER SYSTEM ---
+# --- PERMANENT LIFETIME KEEP-ALIVE & POLING LOOP ---
 @app.route('/')
 def home():
-    return "🚀 System Operational: Profit Masters V3 Master Core Online!", 200
+    return "⚡ Profit Masters Bot is 100% Online and Alive!"
 
-def run_flask():
-    app.run(host="0.0.0.0", port=8080)
+def run():
+    # Dynamic port configuration to bypass Render's strict port binding
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
-    threading.Thread(target=run_flask).start()
-    bot.polling(none_stop=True)
+    # Multi-threading connection engine
+    t = threading.Thread(target=run)
+    t.daemon = True
+    t.start()
+    
+    print("🚀 Permanent Polling Engine Started Successfully!")
+    # Infinity polling makes the bot indestructible and prevents connection drops
+    bot.infinity_polling(timeout=20, long_polling_timeout=10)
