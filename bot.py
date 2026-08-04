@@ -13,7 +13,7 @@ from telebot.types import (
 )
 
 # --- CONFIGURATION & INITIALIZATION ---
-TOKEN = os.getenv("BOT_TOKEN", "8313028390:AAGOzFb6CuotycYlazJmh1h2ZG6lcVuWDCU")
+TOKEN = os.getenv("BOT_TOKEN", "8313028390:AAGNsfFVZpBQ16vU5Tx6NZxQ9NMUzqHbPlk")
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
